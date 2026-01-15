@@ -7,32 +7,26 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "admin_users")
+@Table(name = "token_attempts")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AdminUser {
+public class TokenAttempt {
 
     @Id
     @GeneratedValue
     private UUID id;
 
-    @ManyToOne
-    @JoinColumn(name = "shop_id", nullable = false)
-    private Shop shop;
-
-    @Column(unique = true, nullable = false)
-    private String username;
-
     @Column(nullable = false)
-    private String password;
+    private String phone;
 
+    @ManyToOne
+    @JoinColumn(name = "queue_id", nullable = false)
+    private Queue queue;
+
+    @Builder.Default
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
-
-    @Column(nullable = false)
-    private String role; // ROLE_ADMIN
-
 }

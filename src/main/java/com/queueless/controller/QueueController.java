@@ -24,6 +24,6 @@ public class QueueController {
 
     @GetMapping("/status/{shopId}")
     public Queue getQueueStatus(@PathVariable UUID shopId) {
-        return queueService.getActiveQueue(shopId);
+        return queueService.getActiveQueueByShopId(shopId); // ✅ FIXED
     }
 }

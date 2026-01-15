@@ -20,4 +20,6 @@ public interface TokenRepository extends JpaRepository<Token, UUID> {
             Queue queue,
             int tokenNumber
     );
+
+    boolean existsByQueueAndPhone(Queue queue, String phone);
 }

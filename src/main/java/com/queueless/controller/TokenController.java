@@ -5,6 +5,7 @@ import com.queueless.entity.Queue;
 import com.queueless.entity.Token;
 import com.queueless.service.QueueService;
 import com.queueless.service.TokenService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,13 +22,16 @@ public class TokenController {
     }
 
     @PostMapping("/create")
-    public Token createToken(@RequestBody TokenRequest request) {
+    public Token createToken(@Valid @RequestBody TokenRequest request) {
+
+        Queue queue = queueService.getQueueById(request.getQueueId());
 
         return tokenService.generateToken(
-                request.getShopId(),
+                queue,
                 request.getCustomerName(),
                 request.getPhone()
         );
     }
+
 
 }
