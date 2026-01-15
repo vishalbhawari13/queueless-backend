@@ -42,6 +42,7 @@ public class Token {
     @Column(nullable = false)
     private TokenStatus status;
 
+    @Builder.Default
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }
