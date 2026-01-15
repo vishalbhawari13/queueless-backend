@@ -50,21 +50,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                AdminUser admin = adminRepo.findByUsername(username).orElse(null);
+                AdminUser admin =
+                        adminRepo.findByUsername(username).orElse(null);
 
                 if (admin != null) {
+
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
-                                    admin,
+                                    admin, // ✅ IMPORTANT
                                     null,
                                     List.of(new SimpleGrantedAuthority(admin.getRole()))
                             );
 
                     authentication.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request)
+                            new WebAuthenticationDetailsSource()
+                                    .buildDetails(request)
                     );
 
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    SecurityContextHolder.getContext()
+                            .setAuthentication(authentication);
                 }
             }
         }
