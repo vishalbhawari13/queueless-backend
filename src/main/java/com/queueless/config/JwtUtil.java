@@ -15,25 +15,34 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String secret;
 
-    private final long EXPIRATION = 86400000; // 1 day
+    // ⏱ Access token: 15 minutes
+    private static final long ACCESS_TOKEN_EXPIRATION =
+            15 * 60 * 1000;
 
     private Key getKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        return Keys.hmacShaKeyFor(
+                secret.getBytes(StandardCharsets.UTF_8)
+        );
     }
 
-    public String generateToken(String username) {
+    /** Generate SHORT-LIVED access token */
+    public String generateAccessToken(String username) {
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
+                .setExpiration(
+                        new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION)
+                )
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
+    /** Extract username safely */
     public String extractUsername(String token) {
         return parseClaims(token).getBody().getSubject();
     }
 
+    /** Validate token (used by filter) */
     public boolean isTokenValid(String token) {
         try {
             parseClaims(token);
