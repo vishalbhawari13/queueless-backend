@@ -3,6 +3,7 @@ package com.queueless.controller;
 import com.queueless.entity.AdminUser;
 import com.queueless.entity.Queue;
 import com.queueless.entity.Token;
+import com.queueless.repository.AdminUserRepository;
 import com.queueless.repository.TokenRepository;
 import com.queueless.service.AdminQueueService;
 import com.queueless.service.QueueService;
@@ -19,13 +20,16 @@ public class AdminQueueController {
     private final AdminQueueService adminQueueService;
     private final QueueService queueService;
     private final TokenRepository tokenRepository;
+    private final AdminUserRepository adminUserRepository;
 
     public AdminQueueController(AdminQueueService adminQueueService,
                                 QueueService queueService,
-                                TokenRepository tokenRepository) {
+                                TokenRepository tokenRepository,
+                                AdminUserRepository adminUserRepository) {
         this.adminQueueService = adminQueueService;
         this.queueService = queueService;
         this.tokenRepository = tokenRepository;
+        this.adminUserRepository = adminUserRepository;
     }
 
     /** CALL NEXT TOKEN */
@@ -66,12 +70,12 @@ public class AdminQueueController {
         return adminQueueService.closeQueue(queue, admin);
     }
 
-    /** HELPER: get logged-in admin */
+    /** ✅ SAFE way to get logged-in admin */
     private AdminUser getAuthenticatedAdmin() {
-        Authentication auth = SecurityContextHolder
-                .getContext()
-                .getAuthentication();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName(); // principal = username
 
-        return (AdminUser) auth.getPrincipal();
+        return adminUserRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Admin not found"));
     }
 }

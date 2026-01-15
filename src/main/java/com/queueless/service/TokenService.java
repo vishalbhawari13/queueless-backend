@@ -9,6 +9,7 @@ import com.queueless.exception.BusinessException;
 import com.queueless.repository.QueueRepository;
 import com.queueless.repository.TokenAttemptRepository;
 import com.queueless.repository.TokenRepository;
+import com.queueless.util.GeoUtils;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -30,10 +31,28 @@ public class TokenService {
     }
 
     @Transactional
-    public Token generateToken(Queue queue, String name, String phone) {
+    public Token generateToken(
+            Queue queue,
+            String name,
+            String phone,
+            double customerLat,
+            double customerLng
+    ) {
 
         if (queue.getStatus() != QueueStatus.OPEN) {
             throw new BusinessException("Queue is closed");
+        }
+
+        // 📍 LOCATION CHECK (NEW)
+        double distance = GeoUtils.distanceInMeters(
+                customerLat,
+                customerLng,
+                queue.getShop().getLatitude(),
+                queue.getShop().getLongitude()
+        );
+
+        if (distance > queue.getShop().getAllowedRadiusMeters()) {
+            throw new BusinessException("You are too far from the shop");
         }
 
         // 1 token per phone per queue

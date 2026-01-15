@@ -29,9 +29,12 @@ public class TokenController {
         return tokenService.generateToken(
                 queue,
                 request.getCustomerName(),
-                request.getPhone()
+                request.getPhone(),
+                request.getLatitude(),
+                request.getLongitude()
         );
     }
+
 
 
 }

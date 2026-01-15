@@ -22,4 +22,10 @@ public interface TokenRepository extends JpaRepository<Token, UUID> {
     );
 
     boolean existsByQueueAndPhone(Queue queue, String phone);
+
+    int countByQueueAndStatus(
+            Queue queue,
+            com.queueless.entity.enums.TokenStatus status
+    );
+
 }

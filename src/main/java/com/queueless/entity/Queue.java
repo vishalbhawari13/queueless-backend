@@ -36,6 +36,10 @@ public class Queue {
     @Column(nullable = false)
     private int currentToken = 0;
 
+    // ⏱ Average service time per customer (minutes)
+    @Column(nullable = false)
+    private int avgServiceTimeMinutes;
+
     @Column(name = "queue_date", nullable = false)
     private LocalDate queueDate;
 }

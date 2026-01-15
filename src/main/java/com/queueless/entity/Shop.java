@@ -24,6 +24,17 @@ public class Shop {
 
     private String phone;
 
+    // 📍 LOCATION (NEW)
+    @Column(nullable = false)
+    private double latitude;
+
+    @Column(nullable = false)
+    private double longitude;
+
+    // Allowed distance in meters (e.g. 100m)
+    @Column(nullable = false)
+    private int allowedRadiusMeters;
+
     @Builder.Default
     @Column(nullable = false)
     private boolean active = true;

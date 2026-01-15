@@ -38,7 +38,6 @@ public class QueueService {
                 .map(queue -> {
                     if (queue.getStatus() == QueueStatus.CLOSED) {
                         queue.setStatus(QueueStatus.OPEN);
-                        // ❌ DO NOT reset currentToken
                         return queueRepository.save(queue);
                     }
                     return queue;
@@ -48,14 +47,15 @@ public class QueueService {
                                 .shop(shop)
                                 .status(QueueStatus.OPEN)
                                 .currentToken(0)
+                                .avgServiceTimeMinutes(5)
                                 .queueDate(LocalDate.now())
                                 .build()
                 ));
     }
 
-
     /**
-     * Used by admin APIs
+     * ✅ USED BY ADMIN APIs
+     * Active queue with DB lock
      */
     @Transactional
     public Queue getActiveQueueByShopId(UUID shopId) {
@@ -65,7 +65,7 @@ public class QueueService {
     }
 
     /**
-     * Used by QR / token creation
+     * Used by public APIs (QR, token creation)
      */
     @Transactional
     public Queue getQueueById(UUID queueId) {

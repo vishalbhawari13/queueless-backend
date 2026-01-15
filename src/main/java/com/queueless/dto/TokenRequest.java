@@ -23,4 +23,11 @@ public class TokenRequest {
             message = "Invalid phone number"
     )
     private String phone;
+
+    // 📍 CUSTOMER LOCATION (NEW)
+    @NotNull(message = "Latitude required")
+    private Double latitude;
+
+    @NotNull(message = "Longitude required")
+    private Double longitude;
 }
