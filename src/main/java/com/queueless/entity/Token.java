@@ -42,6 +42,13 @@ public class Token {
     @Column(nullable = false)
     private TokenStatus status;
 
+    // 💰 BILLING (NEW)
+    @Column
+    private Integer billAmount; // ₹
+
+    @Column
+    private String serviceType;
+
     @Builder.Default
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

@@ -1,5 +1,6 @@
 package com.queueless.controller;
 
+import com.queueless.dto.CompleteTokenRequest;
 import com.queueless.entity.AdminUser;
 import com.queueless.entity.Queue;
 import com.queueless.entity.Token;
@@ -42,14 +43,23 @@ public class AdminQueueController {
 
     /** COMPLETE TOKEN */
     @PostMapping("/complete/{tokenId}")
-    public Token complete(@PathVariable UUID tokenId) {
+    public Token complete(
+            @PathVariable UUID tokenId,
+            @RequestBody CompleteTokenRequest request
+    ) {
         AdminUser admin = getAuthenticatedAdmin();
 
         Token token = tokenRepository.findById(tokenId)
                 .orElseThrow(() -> new RuntimeException("Token not found"));
 
-        return adminQueueService.completeToken(token, admin);
+        return adminQueueService.completeToken(
+                token,
+                admin,
+                request.getBillAmount(),
+                request.getServiceType()
+        );
     }
+
 
     /** SKIP TOKEN */
     @PostMapping("/skip/{tokenId}")

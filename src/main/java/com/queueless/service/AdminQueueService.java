@@ -23,6 +23,7 @@ public class AdminQueueService {
         this.tokenRepository = tokenRepository;
     }
 
+    /** CALL NEXT TOKEN */
     @Transactional
     public Token callNext(Queue queue, AdminUser admin) {
 
@@ -33,7 +34,9 @@ public class AdminQueueService {
         }
 
         return tokenRepository
-                .findByQueueAndStatusOrderByTokenNumberAsc(queue, TokenStatus.WAITING)
+                .findByQueueAndStatusOrderByTokenNumberAsc(
+                        queue, TokenStatus.WAITING
+                )
                 .stream()
                 .findFirst()
                 .map(token -> {
@@ -43,8 +46,15 @@ public class AdminQueueService {
                 .orElseThrow(() -> new BusinessException("No waiting tokens"));
     }
 
+    /** COMPLETE TOKEN WITH BILL */
     @Transactional
-    public Token completeToken(Token token, AdminUser admin) {
+    public Token completeToken(
+            Token token,
+            AdminUser admin,
+            int billAmount,
+            String serviceType
+    ) {
+
         validateOwnership(token.getQueue(), admin);
 
         if (token.getStatus() != TokenStatus.CALLED) {
@@ -52,11 +62,16 @@ public class AdminQueueService {
         }
 
         token.setStatus(TokenStatus.COMPLETED);
+        token.setBillAmount(billAmount);
+        token.setServiceType(serviceType);
+
         return tokenRepository.save(token);
     }
 
+    /** SKIP TOKEN */
     @Transactional
     public Token skipToken(Token token, AdminUser admin) {
+
         validateOwnership(token.getQueue(), admin);
 
         if (token.getStatus() != TokenStatus.CALLED) {
@@ -67,9 +82,12 @@ public class AdminQueueService {
         return tokenRepository.save(token);
     }
 
+    /** CLOSE QUEUE */
     @Transactional
     public Queue closeQueue(Queue queue, AdminUser admin) {
+
         validateOwnership(queue, admin);
+
         queue.setStatus(QueueStatus.CLOSED);
         return queueRepository.save(queue);
     }
