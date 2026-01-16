@@ -22,22 +22,39 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf.disable())
+
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .authorizeHttpRequests(auth -> auth
-                        // 🔓 Auth APIs
-                        .requestMatchers("/api/admin/auth/**").permitAll()
-                        .requestMatchers("/api/shop/register").authenticated()
-                        .requestMatchers("/api/webhook/**").permitAll()
 
-                        // 🔐 Admin APIs
+                .authorizeHttpRequests(auth -> auth
+
+                        // 🔓 PUBLIC – CUSTOMER / QR FLOW
+                        .requestMatchers(
+                                "/q/**",
+                                "/queue.html",
+                                "/api/public/**",
+                                "/api/token/create",
+                                "/api/auth/**"
+                        ).permitAll()
+
+                        // 🔐 LOGGED-IN USER (shop registration)
+                        .requestMatchers("/api/shop/register")
+                        .authenticated()
+
+                        // 🔐 ADMIN ONLY
                         .requestMatchers("/api/admin/**")
                         .hasAuthority("ROLE_ADMIN")
 
-                        // 🌍 Public APIs
-                        .anyRequest().permitAll()
+                        // 🔓 Razorpay webhook
+                        .requestMatchers("/api/webhook/**")
+                        .permitAll()
+
+                        // ❌ EVERYTHING ELSE BLOCKED
+                        .anyRequest().denyAll()
                 )
+
+                // JWT filter
                 .addFilterBefore(
                         jwtFilter,
                         UsernamePasswordAuthenticationFilter.class

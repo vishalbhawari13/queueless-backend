@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Queueless – Join Queue</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+        }
+        .container {
+            max-width: 420px;
+            margin: 40px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        h2 { text-align: center; }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+        }
+        .info {
+            background: #eef;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+        }
+        .success { background: #e6ffe6; padding: 10px; }
+        .error { background: #ffe6e6; padding: 10px; }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <h2 id="shopName">Loading...</h2>
+
+    <div class="info" id="queueInfo">
+        Fetching live queue status...
+    </div>
+
+    <input id="name" placeholder="Your name">
+    <input id="phone" placeholder="Phone number">
+
+    <button onclick="joinQueue()">Join Queue</button>
+
+    <div id="result"></div>
+</div>
+
+<script>
+    const shopId = window.location.pathname.split("/").pop();
+    let queueId = null;
+
+    async function loadQueue() {
+        try {
+            console.log("Fetching queue for shop:", shopId);
+
+            const res = await fetch(`/api/public/shop/${shopId}`);
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text);
+            }
+
+            const data = await res.json();
+            console.log("Queue data:", data);
+
+            queueId = data.queueId;
+
+            document.getElementById("shopName").innerText =
+                data.shopName;
+
+            document.getElementById("queueInfo").innerText =
+                `Current token: ${data.currentToken}
+                 | Avg service: ${data.avgServiceTimeMinutes} min`;
+
+        } catch (err) {
+            console.error(err);
+            document.getElementById("queueInfo").innerText =
+                "❌ Queue unavailable";
+        }
+    }
+
+    async function joinQueue() {
+        if (!queueId) {
+            alert("Queue not ready yet");
+            return;
+        }
+
+        const name = document.getElementById("name").value;
+        const phone = document.getElementById("phone").value;
+
+        if (!name || !phone) {
+            alert("Enter name and phone");
+            return;
+        }
+
+        const payload = {
+            queueId: queueId,
+            customerName: name,
+            phone: phone,
+            latitude: 19.076,
+            longitude: 72.8777
+        };
+
+        const res = await fetch("/api/token/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const text = await res.text();
+
+        if (res.ok) {
+            const token = JSON.parse(text);
+            document.getElementById("result").innerHTML =
+                `<div class="success">
+                    🎉 Token created<br>
+                    <b>Your token:</b> ${token.tokenNumber}
+                 </div>`;
+        } else {
+            document.getElementById("result").innerHTML =
+                `<div class="error">${text}</div>`;
+        }
+    }
+
+    loadQueue();
+</script>
+</body>
+</html>

@@ -10,17 +10,17 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/q/shop")
-public class QrController {
+@RequestMapping("/api/public/shop")
+public class PublicShopQueueController {
 
     private final QueueService queueService;
 
-    public QrController(QueueService queueService) {
+    public PublicShopQueueController(QueueService queueService) {
         this.queueService = queueService;
     }
 
     @GetMapping("/{shopId}")
-    public Map<String, Object> openShopQueue(
+    public Map<String, Object> getLiveShopQueue(
             @PathVariable UUID shopId
     ) {
 
@@ -35,6 +35,7 @@ public class QrController {
                 "queueId", queue.getId(),
                 "shopName", queue.getShop().getName(),
                 "avgServiceTimeMinutes", queue.getAvgServiceTimeMinutes(),
+                "currentToken", queue.getCurrentToken(),
                 "queueOpen", true
         );
     }
