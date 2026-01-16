@@ -21,40 +21,52 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
+                // ❌ CSRF not needed for stateless REST APIs
                 .csrf(csrf -> csrf.disable())
 
+                // 🚫 No HTTP session (JWT based auth)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // 🔓 PUBLIC – CUSTOMER / QR FLOW
+                        /* =====================================================
+                           🔓 PUBLIC – CUSTOMER / QR / LIVE QUEUE FLOW
+                           ===================================================== */
                         .requestMatchers(
-                                "/q/**",
-                                "/queue.html",
-                                "/api/public/**",
-                                "/api/token/create",
-                                "/api/auth/**"
+                                "/q/**",                  // QR entry page
+                                "/queue.html",            // static HTML
+                                "/api/public/**",         // live queue APIs
+                                "/api/token/create",      // customer token creation
+                                "/api/auth/**"            // user register/login
                         ).permitAll()
 
-                        // 🔐 LOGGED-IN USER (shop registration)
+                        /* =====================================================
+                           🔐 LOGGED-IN USER (SHOP REGISTRATION)
+                           ===================================================== */
                         .requestMatchers("/api/shop/register")
                         .authenticated()
 
-                        // 🔐 ADMIN ONLY
+                        /* =====================================================
+                           🔐 ADMIN ONLY
+                           ===================================================== */
                         .requestMatchers("/api/admin/**")
                         .hasAuthority("ROLE_ADMIN")
 
-                        // 🔓 Razorpay webhook
+                        /* =====================================================
+                           🔓 WEBHOOKS (Razorpay)
+                           ===================================================== */
                         .requestMatchers("/api/webhook/**")
                         .permitAll()
 
-                        // ❌ EVERYTHING ELSE BLOCKED
+                        /* =====================================================
+                           ❌ EVERYTHING ELSE BLOCKED
+                           ===================================================== */
                         .anyRequest().denyAll()
                 )
 
-                // JWT filter
+                // 🔐 JWT authentication filter
                 .addFilterBefore(
                         jwtFilter,
                         UsernamePasswordAuthenticationFilter.class

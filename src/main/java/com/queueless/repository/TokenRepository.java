@@ -15,7 +15,7 @@ import java.util.UUID;
 public interface TokenRepository extends JpaRepository<Token, UUID> {
 
     /* =======================
-       TOKEN FLOW (ADMIN)
+       ADMIN FLOW
        ======================= */
 
     List<Token> findByQueueAndStatusOrderByTokenNumberAsc(
@@ -29,16 +29,24 @@ public interface TokenRepository extends JpaRepository<Token, UUID> {
     );
 
     /* =======================
+       🔔 NOW SERVING TOKEN (FIX)
+       ======================= */
+
+    // ✅ LATEST CALLED TOKEN (highest token number)
+    Optional<Token> findFirstByQueueAndStatusOrderByTokenNumberDesc(
+            Queue queue,
+            TokenStatus status
+    );
+
+    /* =======================
        TOKEN CREATION RULES
        ======================= */
 
-    // One token per phone per queue
     boolean existsByQueueAndPhone(
             Queue queue,
             String phone
     );
 
-    // 🔢 DAILY TOKEN COUNT (SUBSCRIPTION ENFORCEMENT)
     long countByQueueAndCreatedAtAfter(
             Queue queue,
             LocalDateTime createdAfter

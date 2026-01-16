@@ -6,9 +6,9 @@ import com.queueless.entity.RefreshToken;
 import com.queueless.entity.User;
 import com.queueless.exception.BusinessException;
 import com.queueless.repository.UserRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -30,7 +30,9 @@ public class AuthService {
         this.refreshTokenService = refreshTokenService;
     }
 
-    /* ================= ADMIN LOGIN ================= */
+    /* =====================================================
+       ADMIN LOGIN
+       ===================================================== */
 
     @Transactional
     public AuthResponse login(AdminLoginRequest request) {
@@ -39,7 +41,7 @@ public class AuthService {
                 .orElseThrow(() ->
                         new BusinessException("Invalid credentials"));
 
-        if (!admin.getRole().equals("ROLE_ADMIN")) {
+        if (!"ROLE_ADMIN".equals(admin.getRole())) {
             throw new BusinessException("Access denied");
         }
 
@@ -47,27 +49,46 @@ public class AuthService {
             throw new BusinessException("Invalid credentials");
         }
 
+        // 🔐 Generate access token
         String accessToken =
                 jwtUtil.generateAccessToken(admin.getEmail());
 
+        // 🔁 Create (or replace) refresh token
         RefreshToken refreshToken =
                 refreshTokenService.createRefreshTokenForUser(admin);
 
-        return new AuthResponse(accessToken, refreshToken.getToken());
-    }
-
-    /* ================= REFRESH ================= */
-
-    @Transactional
-    public String refreshAccessToken(String refreshToken) {
-
-        RefreshToken token =
-                refreshTokenService.verifyRefreshToken(refreshToken);
-
-        return jwtUtil.generateAccessToken(
-                token.getUser().getEmail()
+        return new AuthResponse(
+                accessToken,
+                refreshToken.getToken()
         );
     }
+
+    /* =====================================================
+       REFRESH ACCESS TOKEN (ROTATE REFRESH TOKEN)
+       ===================================================== */
+
+    @Transactional
+    public AuthResponse refreshAccessToken(String refreshToken) {
+
+        // 🔁 Verify + rotate refresh token
+        RefreshToken rotatedToken =
+                refreshTokenService
+                        .verifyAndRotateRefreshToken(refreshToken);
+
+        String newAccessToken =
+                jwtUtil.generateAccessToken(
+                        rotatedToken.getUser().getEmail()
+                );
+
+        return new AuthResponse(
+                newAccessToken,
+                rotatedToken.getToken()
+        );
+    }
+
+    /* =====================================================
+       RESPONSE RECORD
+       ===================================================== */
 
     public record AuthResponse(
             String accessToken,

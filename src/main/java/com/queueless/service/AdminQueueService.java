@@ -17,13 +17,18 @@ public class AdminQueueService {
     private final QueueRepository queueRepository;
     private final TokenRepository tokenRepository;
 
-    public AdminQueueService(QueueRepository queueRepository,
-                             TokenRepository tokenRepository) {
+    public AdminQueueService(
+            QueueRepository queueRepository,
+            TokenRepository tokenRepository
+    ) {
         this.queueRepository = queueRepository;
         this.tokenRepository = tokenRepository;
     }
 
-    /** CALL NEXT TOKEN */
+    /* =====================================================
+       CALL NEXT TOKEN
+       ===================================================== */
+
     @Transactional
     public Token callNext(Queue queue, User admin) {
 
@@ -34,19 +39,31 @@ public class AdminQueueService {
         }
 
         return tokenRepository
-                .findByQueueAndStatusOrderByTokenNumberAsc(queue, TokenStatus.WAITING)
+                .findByQueueAndStatusOrderByTokenNumberAsc(
+                        queue,
+                        TokenStatus.WAITING
+                )
                 .stream()
                 .findFirst()
                 .map(token -> {
                     token.setStatus(TokenStatus.CALLED);
                     return tokenRepository.save(token);
                 })
-                .orElseThrow(() -> new BusinessException("No waiting tokens"));
+                .orElseThrow(() ->
+                        new BusinessException("No waiting tokens"));
     }
 
-    /** COMPLETE TOKEN WITH BILL */
+    /* =====================================================
+       COMPLETE TOKEN → AUTO CALL NEXT
+       ===================================================== */
+
     @Transactional
-    public Token completeToken(Token token, User admin, int billAmount, String serviceType) {
+    public Token completeToken(
+            Token token,
+            User admin,
+            int billAmount,
+            String serviceType
+    ) {
 
         validateOwnership(token.getQueue(), admin);
 
@@ -57,11 +74,18 @@ public class AdminQueueService {
         token.setStatus(TokenStatus.COMPLETED);
         token.setBillAmount(billAmount);
         token.setServiceType(serviceType);
+        tokenRepository.save(token);
 
-        return tokenRepository.save(token);
+        // 🔔 AUTO CALL NEXT TOKEN
+        autoCallNext(token.getQueue());
+
+        return token;
     }
 
-    /** SKIP TOKEN */
+    /* =====================================================
+       SKIP TOKEN → AUTO CALL NEXT
+       ===================================================== */
+
     @Transactional
     public Token skipToken(Token token, User admin) {
 
@@ -72,22 +96,48 @@ public class AdminQueueService {
         }
 
         token.setStatus(TokenStatus.SKIPPED);
-        return tokenRepository.save(token);
+        tokenRepository.save(token);
+
+        // 🔔 AUTO CALL NEXT TOKEN
+        autoCallNext(token.getQueue());
+
+        return token;
     }
 
-    /** CLOSE QUEUE */
+    /* =====================================================
+       CLOSE QUEUE
+       ===================================================== */
+
     @Transactional
     public Queue closeQueue(Queue queue, User admin) {
 
         validateOwnership(queue, admin);
-
         queue.setStatus(QueueStatus.CLOSED);
         return queueRepository.save(queue);
     }
 
-    /** VALIDATE ADMIN ACCESS TO QUEUE */
+    /* =====================================================
+       INTERNAL HELPERS
+       ===================================================== */
+
+    private void autoCallNext(Queue queue) {
+
+        tokenRepository
+                .findByQueueAndStatusOrderByTokenNumberAsc(
+                        queue,
+                        TokenStatus.WAITING
+                )
+                .stream()
+                .findFirst()
+                .ifPresent(next -> {
+                    next.setStatus(TokenStatus.CALLED);
+                    tokenRepository.save(next);
+                });
+    }
+
     private void validateOwnership(Queue queue, User admin) {
-        if (admin.getShop() == null || !queue.getShop().getId().equals(admin.getShop().getId())) {
+        if (admin.getShop() == null ||
+                !queue.getShop().getId().equals(admin.getShop().getId())) {
             throw new BusinessException("Unauthorized action");
         }
     }

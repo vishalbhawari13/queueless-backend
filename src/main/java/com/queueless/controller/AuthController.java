@@ -16,9 +16,12 @@ public class AuthController {
         this.authService = authService;
     }
 
-    /** 🔐 LOGIN */
+    /* =====================================================
+       🔐 ADMIN LOGIN
+       ===================================================== */
+
     @PostMapping("/login")
-    public String login(
+    public AuthService.AuthResponse login(
             @RequestBody AdminLoginRequest request,
             HttpServletResponse response
     ) {
@@ -26,22 +29,40 @@ public class AuthController {
         AuthService.AuthResponse auth =
                 authService.login(request);
 
+        // 🍪 Set refresh token cookie
         Cookie cookie = new Cookie("refreshToken", auth.refreshToken());
         cookie.setHttpOnly(true);
-        cookie.setSecure(false); // ✅ true ONLY in production (HTTPS)
+        cookie.setSecure(false); // ✅ true in production (HTTPS)
         cookie.setPath("/api/admin");
         cookie.setMaxAge(30 * 24 * 60 * 60); // 30 days
 
         response.addCookie(cookie);
 
-        return auth.accessToken();
+        return auth; // ✅ return access + refresh token
     }
 
-    /** 🔁 REFRESH ACCESS TOKEN */
+    /* =====================================================
+       🔁 REFRESH ACCESS TOKEN (ROTATION)
+       ===================================================== */
+
     @PostMapping("/refresh")
-    public String refresh(
-            @CookieValue("refreshToken") String refreshToken
+    public AuthService.AuthResponse refresh(
+            @CookieValue("refreshToken") String refreshToken,
+            HttpServletResponse response
     ) {
-        return authService.refreshAccessToken(refreshToken);
+
+        AuthService.AuthResponse auth =
+                authService.refreshAccessToken(refreshToken);
+
+        // 🔁 Update refresh token cookie (ROTATED)
+        Cookie cookie = new Cookie("refreshToken", auth.refreshToken());
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false); // ✅ true in production
+        cookie.setPath("/api/admin");
+        cookie.setMaxAge(30 * 24 * 60 * 60);
+
+        response.addCookie(cookie);
+
+        return auth;
     }
 }

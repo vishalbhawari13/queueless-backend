@@ -1,51 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Queueless – Join Queue</title>
+    <title>Queueless – Live Queue</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
+        * { box-sizing: border-box; }
+
         body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #4f46e5, #06b6d4);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
         }
-        .container {
-            max-width: 420px;
-            margin: 40px auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-        }
-        h2 { text-align: center; }
-        input, button {
+
+        .card {
             width: 100%;
-            padding: 10px;
-            margin-top: 10px;
+            max-width: 420px;
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            animation: fadeUp 0.6s ease;
         }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            text-align: center;
+            margin: 0 0 12px;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .live-box {
+            background: #f1f5f9;
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+            font-size: 0.95rem;
+            color: #1f2937;
+            margin-bottom: 18px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
         button {
-            background: #007bff;
-            color: white;
+            width: 100%;
+            padding: 14px;
             border: none;
-            border-radius: 6px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
         }
-        .info {
-            background: #eef;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 6px;
+
+        .success {
+            margin-top: 16px;
+            background: #ecfdf5;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            color: #065f46;
         }
-        .success { background: #e6ffe6; padding: 10px; }
-        .error { background: #ffe6e6; padding: 10px; }
+
+        .token-number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        /* 🎉 POPUP */
+        .popup {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .popup-content {
+            background: white;
+            border-radius: 18px;
+            padding: 28px;
+            max-width: 340px;
+            width: 90%;
+            text-align: center;
+            animation: pop 0.4s ease;
+        }
+
+        @keyframes pop {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .popup h3 {
+            margin: 0;
+            font-size: 1.4rem;
+            color: #16a34a;
+        }
+
+        .popup p {
+            color: #374151;
+            margin: 10px 0 18px;
+        }
+
+        .popup button {
+            background: #16a34a;
+        }
     </style>
 </head>
 
 <body>
-<div class="container">
-    <h2 id="shopName">Loading...</h2>
 
-    <div class="info" id="queueInfo">
-        Fetching live queue status...
+<div class="card">
+    <h2 id="shopName">Loading…</h2>
+
+    <div class="live-box" id="liveInfo">
+        Loading live queue…
     </div>
 
     <input id="name" placeholder="Your name">
@@ -56,58 +149,84 @@
     <div id="result"></div>
 </div>
 
+<!-- 🎉 HAPPY POPUP -->
+<div class="popup" id="popup">
+    <div class="popup-content">
+        <h3>🎉 It's Your Turn!</h3>
+        <p>Please proceed to the counter.<br>Thank you for waiting 🙏</p>
+        <button onclick="closePopup()">Got it</button>
+    </div>
+</div>
+
+<!-- 🔔 SOUND -->
+<audio id="ding">
+    <source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" type="audio/ogg">
+</audio>
+
 <script>
     const shopId = window.location.pathname.split("/").pop();
     let queueId = null;
+    let myToken = localStorage.getItem("myToken");
+    let notified = localStorage.getItem("notified") === "true";
 
-    async function loadQueue() {
-        try {
-            console.log("Fetching queue for shop:", shopId);
+    async function loadShopQueue() {
+        const res = await fetch(`/api/public/shop/${shopId}`);
+        const data = await res.json();
 
-            const res = await fetch(`/api/public/shop/${shopId}`);
+        queueId = data.queueId;
+        document.getElementById("shopName").innerText = data.shopName;
+    }
 
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text);
+    async function pollQueue() {
+        if (!queueId) return;
+
+        let url = `/api/public/queue/${queueId}`;
+        if (myToken) url += `?yourToken=${myToken}`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        let text = `🔔 Now Serving: Token ${data.currentToken}`;
+
+        if (myToken) {
+            text += `<br>🎟 Your Token: ${myToken}`;
+            text += `<br>👥 People Ahead: ${data.peopleAhead}`;
+            text += `<br>⏳ Estimated Wait: ${data.estimatedWaitMinutes} min`;
+        }
+
+        document.getElementById("liveInfo").innerHTML = text;
+
+        // 🎉 SHOW POPUP
+        if (myToken && Number(myToken) === data.currentToken && !notified) {
+            notified = true;
+            localStorage.setItem("notified", "true");
+
+            document.getElementById("popup").style.display = "flex";
+            document.getElementById("ding").play();
+
+            if (navigator.vibrate) {
+                navigator.vibrate([300, 200, 300]);
             }
-
-            const data = await res.json();
-            console.log("Queue data:", data);
-
-            queueId = data.queueId;
-
-            document.getElementById("shopName").innerText =
-                data.shopName;
-
-            document.getElementById("queueInfo").innerText =
-                `Current token: ${data.currentToken}
-                 | Avg service: ${data.avgServiceTimeMinutes} min`;
-
-        } catch (err) {
-            console.error(err);
-            document.getElementById("queueInfo").innerText =
-                "❌ Queue unavailable";
         }
     }
 
-    async function joinQueue() {
-        if (!queueId) {
-            alert("Queue not ready yet");
-            return;
-        }
+    function closePopup() {
+        document.getElementById("popup").style.display = "none";
+    }
 
-        const name = document.getElementById("name").value;
-        const phone = document.getElementById("phone").value;
+    async function joinQueue() {
+        const name = document.getElementById("name").value.trim();
+        const phone = document.getElementById("phone").value.trim();
 
         if (!name || !phone) {
-            alert("Enter name and phone");
+            alert("Please enter name and phone number");
             return;
         }
 
         const payload = {
-            queueId: queueId,
+            queueId,
             customerName: name,
-            phone: phone,
+            phone,
             latitude: 19.076,
             longitude: 72.8777
         };
@@ -118,22 +237,22 @@
             body: JSON.stringify(payload)
         });
 
-        const text = await res.text();
+        const token = await res.json();
+        myToken = token.tokenNumber;
+        localStorage.setItem("myToken", myToken);
+        localStorage.removeItem("notified");
 
-        if (res.ok) {
-            const token = JSON.parse(text);
-            document.getElementById("result").innerHTML =
-                `<div class="success">
-                    🎉 Token created<br>
-                    <b>Your token:</b> ${token.tokenNumber}
-                 </div>`;
-        } else {
-            document.getElementById("result").innerHTML =
-                `<div class="error">${text}</div>`;
-        }
+        document.getElementById("result").innerHTML = `
+            <div class="success">
+                🎉 Your Token
+                <div class="token-number">${myToken}</div>
+            </div>
+        `;
     }
 
-    loadQueue();
+    loadShopQueue();
+    setInterval(pollQueue, 5000);
 </script>
+
 </body>
 </html>
