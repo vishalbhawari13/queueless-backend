@@ -9,6 +9,7 @@ import com.queueless.repository.PaymentRepository;
 import com.queueless.repository.ShopSubscriptionRepository;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
+import com.razorpay.Utils;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -77,6 +78,40 @@ public class PaymentService {
                 "amount", amount,
                 "currency", "INR"
         );
+    }
+
+
+    public void processWebhook(
+            String payload,
+            String signature,
+            String secret
+    ) {
+
+        try {
+            // 🔐 Verify webhook signature
+            Utils.verifyWebhookSignature(payload, signature, secret);
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid webhook signature");
+        }
+
+        JSONObject json = new JSONObject(payload);
+        String event = json.getString("event");
+
+        // ✅ We only care about successful payments
+        if (!event.equals("payment.captured")) {
+            return;
+        }
+
+        JSONObject paymentEntity =
+                json.getJSONObject("payload")
+                        .getJSONObject("payment")
+                        .getJSONObject("entity");
+
+        String orderId = paymentEntity.getString("order_id");
+        String paymentId = paymentEntity.getString("id");
+
+        // 🔁 Idempotent call (safe to call multiple times)
+        handlePaymentSuccess(orderId, paymentId);
     }
 
     /**
