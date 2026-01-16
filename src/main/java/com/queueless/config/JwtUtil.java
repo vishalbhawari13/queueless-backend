@@ -5,6 +5,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
@@ -15,34 +16,45 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String secret;
 
-    // ⏱ Access token: 15 minutes
-    private static final long ACCESS_TOKEN_EXPIRATION =
-            15 * 60 * 1000;
+    @Value("${jwt.expiration:3600000}") // default 1 hour if not set
+    private long expirationMs;
 
-    private Key getKey() {
-        return Keys.hmacShaKeyFor(
-                secret.getBytes(StandardCharsets.UTF_8)
-        );
+    private Key key;
+
+    /** Ensure key is ready after bean initialization */
+    @PostConstruct
+    public void init() {
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+
+        // Ensure minimum length 32 bytes
+        if (keyBytes.length < 32) {
+            throw new IllegalArgumentException(
+                    "JWT secret key must be at least 32 bytes (256 bits) for HS256"
+            );
+        }
+
+        key = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    /** Generate SHORT-LIVED access token */
+    /** Generate short-lived access token */
     public String generateAccessToken(String username) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + expirationMs);
+
         return Jwts.builder()
                 .setSubject(username)
-                .setIssuedAt(new Date())
-                .setExpiration(
-                        new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION)
-                )
-                .signWith(getKey(), SignatureAlgorithm.HS256)
+                .setIssuedAt(now)
+                .setExpiration(expiry)
+                .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    /** Extract username safely */
+    /** Extract username from JWT */
     public String extractUsername(String token) {
         return parseClaims(token).getBody().getSubject();
     }
 
-    /** Validate token (used by filter) */
+    /** Validate token */
     public boolean isTokenValid(String token) {
         try {
             parseClaims(token);
@@ -52,9 +64,10 @@ public class JwtUtil {
         }
     }
 
+    /** Parse claims safely */
     private Jws<Claims> parseClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(getKey())
+                .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token);
     }

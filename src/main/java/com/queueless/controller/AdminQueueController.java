@@ -1,11 +1,11 @@
 package com.queueless.controller;
 
 import com.queueless.dto.CompleteTokenRequest;
-import com.queueless.entity.AdminUser;
 import com.queueless.entity.Queue;
 import com.queueless.entity.Token;
-import com.queueless.repository.AdminUserRepository;
+import com.queueless.entity.User;
 import com.queueless.repository.TokenRepository;
+import com.queueless.repository.UserRepository;
 import com.queueless.service.AdminQueueService;
 import com.queueless.service.QueueService;
 import org.springframework.security.core.Authentication;
@@ -21,22 +21,22 @@ public class AdminQueueController {
     private final AdminQueueService adminQueueService;
     private final QueueService queueService;
     private final TokenRepository tokenRepository;
-    private final AdminUserRepository adminUserRepository;
+    private final UserRepository userRepository;
 
     public AdminQueueController(AdminQueueService adminQueueService,
                                 QueueService queueService,
                                 TokenRepository tokenRepository,
-                                AdminUserRepository adminUserRepository) {
+                                UserRepository userRepository) {
         this.adminQueueService = adminQueueService;
         this.queueService = queueService;
         this.tokenRepository = tokenRepository;
-        this.adminUserRepository = adminUserRepository;
+        this.userRepository = userRepository;
     }
 
     /** CALL NEXT TOKEN */
     @PostMapping("/call-next")
     public Token callNext() {
-        AdminUser admin = getAuthenticatedAdmin();
+        User admin = getAuthenticatedAdmin();
         Queue queue = queueService.getActiveQueueByShopId(admin.getShop().getId());
         return adminQueueService.callNext(queue, admin);
     }
@@ -47,7 +47,7 @@ public class AdminQueueController {
             @PathVariable UUID tokenId,
             @RequestBody CompleteTokenRequest request
     ) {
-        AdminUser admin = getAuthenticatedAdmin();
+        User admin = getAuthenticatedAdmin();
 
         Token token = tokenRepository.findById(tokenId)
                 .orElseThrow(() -> new RuntimeException("Token not found"));
@@ -60,11 +60,10 @@ public class AdminQueueController {
         );
     }
 
-
     /** SKIP TOKEN */
     @PostMapping("/skip/{tokenId}")
     public Token skip(@PathVariable UUID tokenId) {
-        AdminUser admin = getAuthenticatedAdmin();
+        User admin = getAuthenticatedAdmin();
 
         Token token = tokenRepository.findById(tokenId)
                 .orElseThrow(() -> new RuntimeException("Token not found"));
@@ -75,17 +74,20 @@ public class AdminQueueController {
     /** CLOSE QUEUE */
     @PostMapping("/close")
     public Queue close() {
-        AdminUser admin = getAuthenticatedAdmin();
+        User admin = getAuthenticatedAdmin();
         Queue queue = queueService.getActiveQueueByShopId(admin.getShop().getId());
         return adminQueueService.closeQueue(queue, admin);
     }
 
     /** ✅ SAFE way to get logged-in admin */
-    private AdminUser getAuthenticatedAdmin() {
+    private User getAuthenticatedAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String username = auth.getName(); // principal = username
+        User user = (User) auth.getPrincipal(); // principal = User object
 
-        return adminUserRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Admin not found"));
+        if (!"ROLE_ADMIN".equals(user.getRole())) {
+            throw new RuntimeException("Access denied: Admin only");
+        }
+
+        return user;
     }
 }

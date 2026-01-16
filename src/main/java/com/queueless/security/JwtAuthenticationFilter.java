@@ -1,8 +1,8 @@
 package com.queueless.security;
 
 import com.queueless.config.JwtUtil;
-import com.queueless.entity.AdminUser;
-import com.queueless.repository.AdminUserRepository;
+import com.queueless.entity.User;
+import com.queueless.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,12 +21,12 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final AdminUserRepository adminRepo;
+    private final UserRepository userRepository;
 
     public JwtAuthenticationFilter(JwtUtil jwtUtil,
-                                   AdminUserRepository adminRepo) {
+                                   UserRepository userRepository) {
         this.jwtUtil = jwtUtil;
-        this.adminRepo = adminRepo;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -37,39 +37,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+        // No token → continue filter chain
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            String token = authHeader.substring(7);
+        String token = authHeader.substring(7);
 
-            if (!jwtUtil.isTokenValid(token)) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                return;
-            }
+        // Invalid token → reject immediately
+        if (!jwtUtil.isTokenValid(token)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
 
-            String username = jwtUtil.extractUsername(token);
+        String email = jwtUtil.extractUsername(token);
 
-            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+        // Already authenticated → skip
+        if (email != null &&
+                SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                AdminUser admin =
-                        adminRepo.findByUsername(username).orElse(null);
+            User user = userRepository.findByEmail(email).orElse(null);
 
-                if (admin != null) {
+            if (user != null) {
 
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    admin, // ✅ IMPORTANT
-                                    null,
-                                    List.of(new SimpleGrantedAuthority(admin.getRole()))
-                            );
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                user, // ✅ PRINCIPAL
+                                null,
+                                List.of(new SimpleGrantedAuthority(user.getRole()))
+                        );
 
-                    authentication.setDetails(
-                            new WebAuthenticationDetailsSource()
-                                    .buildDetails(request)
-                    );
+                authentication.setDetails(
+                        new WebAuthenticationDetailsSource()
+                                .buildDetails(request)
+                );
 
-                    SecurityContextHolder.getContext()
-                            .setAuthentication(authentication);
-                }
+                SecurityContextHolder.getContext()
+                        .setAuthentication(authentication);
             }
         }
 

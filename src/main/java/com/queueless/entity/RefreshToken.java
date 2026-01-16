@@ -19,13 +19,17 @@ public class RefreshToken {
     @GeneratedValue
     private UUID id;
 
-    @OneToOne
-    @JoinColumn(name = "admin_user_id", nullable = false, unique = true)
-    private AdminUser adminUser;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "user_id",
+            nullable = false,
+            unique = true
+    )
+    private User user;
 
     @Column(nullable = false, unique = true)
     private String token;
 
-    @Column(nullable = false)
-    private LocalDateTime expiryDate;
+    @Column(name = "expiry_date", nullable = false)
+    private LocalDateTime expiryTime;
 }

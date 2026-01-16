@@ -28,6 +28,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 🔓 Auth APIs
                         .requestMatchers("/api/admin/auth/**").permitAll()
+                        .requestMatchers("/api/shop/register").authenticated()
                         .requestMatchers("/api/webhook/**").permitAll()
 
                         // 🔐 Admin APIs

@@ -1,8 +1,8 @@
 package com.queueless.service;
 
-import com.queueless.entity.AdminUser;
 import com.queueless.entity.Queue;
 import com.queueless.entity.Token;
+import com.queueless.entity.User;
 import com.queueless.entity.enums.QueueStatus;
 import com.queueless.entity.enums.TokenStatus;
 import com.queueless.exception.BusinessException;
@@ -25,7 +25,7 @@ public class AdminQueueService {
 
     /** CALL NEXT TOKEN */
     @Transactional
-    public Token callNext(Queue queue, AdminUser admin) {
+    public Token callNext(Queue queue, User admin) {
 
         validateOwnership(queue, admin);
 
@@ -34,9 +34,7 @@ public class AdminQueueService {
         }
 
         return tokenRepository
-                .findByQueueAndStatusOrderByTokenNumberAsc(
-                        queue, TokenStatus.WAITING
-                )
+                .findByQueueAndStatusOrderByTokenNumberAsc(queue, TokenStatus.WAITING)
                 .stream()
                 .findFirst()
                 .map(token -> {
@@ -48,12 +46,7 @@ public class AdminQueueService {
 
     /** COMPLETE TOKEN WITH BILL */
     @Transactional
-    public Token completeToken(
-            Token token,
-            AdminUser admin,
-            int billAmount,
-            String serviceType
-    ) {
+    public Token completeToken(Token token, User admin, int billAmount, String serviceType) {
 
         validateOwnership(token.getQueue(), admin);
 
@@ -70,7 +63,7 @@ public class AdminQueueService {
 
     /** SKIP TOKEN */
     @Transactional
-    public Token skipToken(Token token, AdminUser admin) {
+    public Token skipToken(Token token, User admin) {
 
         validateOwnership(token.getQueue(), admin);
 
@@ -84,7 +77,7 @@ public class AdminQueueService {
 
     /** CLOSE QUEUE */
     @Transactional
-    public Queue closeQueue(Queue queue, AdminUser admin) {
+    public Queue closeQueue(Queue queue, User admin) {
 
         validateOwnership(queue, admin);
 
@@ -92,8 +85,9 @@ public class AdminQueueService {
         return queueRepository.save(queue);
     }
 
-    private void validateOwnership(Queue queue, AdminUser admin) {
-        if (!queue.getShop().getId().equals(admin.getShop().getId())) {
+    /** VALIDATE ADMIN ACCESS TO QUEUE */
+    private void validateOwnership(Queue queue, User admin) {
+        if (admin.getShop() == null || !queue.getShop().getId().equals(admin.getShop().getId())) {
             throw new BusinessException("Unauthorized action");
         }
     }

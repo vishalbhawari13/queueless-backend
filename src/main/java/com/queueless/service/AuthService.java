@@ -2,10 +2,10 @@ package com.queueless.service;
 
 import com.queueless.config.JwtUtil;
 import com.queueless.dto.AdminLoginRequest;
-import com.queueless.entity.AdminUser;
 import com.queueless.entity.RefreshToken;
+import com.queueless.entity.User;
 import com.queueless.exception.BusinessException;
-import com.queueless.repository.AdminUserRepository;
+import com.queueless.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -13,41 +13,50 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthService {
 
-    private final AdminUserRepository adminRepo;
+    private final UserRepository userRepo;
     private final BCryptPasswordEncoder encoder;
     private final JwtUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;
 
     public AuthService(
-            AdminUserRepository adminRepo,
+            UserRepository userRepo,
             BCryptPasswordEncoder encoder,
             JwtUtil jwtUtil,
             RefreshTokenService refreshTokenService
     ) {
-        this.adminRepo = adminRepo;
+        this.userRepo = userRepo;
         this.encoder = encoder;
         this.jwtUtil = jwtUtil;
         this.refreshTokenService = refreshTokenService;
     }
 
+    /* ================= ADMIN LOGIN ================= */
+
     @Transactional
     public AuthResponse login(AdminLoginRequest request) {
 
-        AdminUser admin = adminRepo.findByUsername(request.getUsername())
-                .orElseThrow(() -> new BusinessException("Invalid credentials"));
+        User admin = userRepo.findByEmail(request.getEmail())
+                .orElseThrow(() ->
+                        new BusinessException("Invalid credentials"));
+
+        if (!admin.getRole().equals("ROLE_ADMIN")) {
+            throw new BusinessException("Access denied");
+        }
 
         if (!encoder.matches(request.getPassword(), admin.getPassword())) {
             throw new BusinessException("Invalid credentials");
         }
 
         String accessToken =
-                jwtUtil.generateAccessToken(admin.getUsername());
+                jwtUtil.generateAccessToken(admin.getEmail());
 
         RefreshToken refreshToken =
-                refreshTokenService.createRefreshToken(admin);
+                refreshTokenService.createRefreshTokenForUser(admin);
 
         return new AuthResponse(accessToken, refreshToken.getToken());
     }
+
+    /* ================= REFRESH ================= */
 
     @Transactional
     public String refreshAccessToken(String refreshToken) {
@@ -56,11 +65,10 @@ public class AuthService {
                 refreshTokenService.verifyRefreshToken(refreshToken);
 
         return jwtUtil.generateAccessToken(
-                token.getAdminUser().getUsername()
+                token.getUser().getEmail()
         );
     }
 
-    // simple DTO
     public record AuthResponse(
             String accessToken,
             String refreshToken

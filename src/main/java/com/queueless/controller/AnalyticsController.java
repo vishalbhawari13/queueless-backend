@@ -1,11 +1,11 @@
 package com.queueless.controller;
 
 import com.queueless.dto.DailyAnalyticsResponse;
-import com.queueless.entity.AdminUser;
 import com.queueless.entity.Queue;
+import com.queueless.entity.User;
 import com.queueless.entity.enums.TokenStatus;
-import com.queueless.repository.AdminUserRepository;
 import com.queueless.repository.TokenRepository;
+import com.queueless.repository.UserRepository;
 import com.queueless.service.QueueService;
 import com.queueless.service.SubscriptionService;
 import org.springframework.security.core.Authentication;
@@ -18,33 +18,33 @@ public class AnalyticsController {
 
     private final QueueService queueService;
     private final TokenRepository tokenRepository;
-    private final AdminUserRepository adminUserRepository;
+    private final UserRepository userRepository;
     private final SubscriptionService subscriptionService;
 
     public AnalyticsController(QueueService queueService,
                                TokenRepository tokenRepository,
-                               AdminUserRepository adminUserRepository,
+                               UserRepository userRepository,
                                SubscriptionService subscriptionService) {
         this.queueService = queueService;
         this.tokenRepository = tokenRepository;
-        this.adminUserRepository = adminUserRepository;
+        this.userRepository = userRepository;
         this.subscriptionService = subscriptionService;
     }
 
+    /** DAILY ANALYTICS FOR ADMIN */
     @GetMapping("/today")
     public DailyAnalyticsResponse today() {
 
-        AdminUser admin = getAuthenticatedAdmin();
+        User admin = getAuthenticatedAdmin();
+
         Queue queue = queueService.getActiveQueueByShopId(admin.getShop().getId());
 
         // 💳 PLAN ENFORCEMENT (ANALYTICS)
         subscriptionService.validateAnalyticsAccess(queue.getShop());
 
-        long completed =
-                tokenRepository.countByQueueAndStatus(queue, TokenStatus.COMPLETED);
+        long completed = tokenRepository.countByQueueAndStatus(queue, TokenStatus.COMPLETED);
 
-        int revenue =
-                tokenRepository.sumBillAmountByQueueAndStatus(queue, TokenStatus.COMPLETED);
+        int revenue = tokenRepository.sumBillAmountByQueueAndStatus(queue, TokenStatus.COMPLETED);
 
         int avgBill = completed == 0 ? 0 : (int) (revenue / completed);
 
@@ -55,11 +55,19 @@ public class AnalyticsController {
                 .build();
     }
 
-    private AdminUser getAuthenticatedAdmin() {
+    /** SAFE method to get logged-in admin */
+    private User getAuthenticatedAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String username = auth.getName();
+        User user = (User) auth.getPrincipal();
 
-        return adminUserRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Admin not found"));
+        if (!"ROLE_ADMIN".equals(user.getRole())) {
+            throw new RuntimeException("Access denied: Admin only");
+        }
+
+        if (user.getShop() == null) {
+            throw new RuntimeException("Admin has no associated shop");
+        }
+
+        return user;
     }
 }
