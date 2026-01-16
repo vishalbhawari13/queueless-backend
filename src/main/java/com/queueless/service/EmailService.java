@@ -1,8 +1,10 @@
 package com.queueless.service;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -19,15 +21,113 @@ public class EmailService {
 
     public void sendOtp(String to, String otp) {
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(from);
-        message.setTo(to);
-        message.setSubject("Queueless - Email Verification OTP");
-        message.setText(
-                "Your OTP for Queueless registration is: " + otp +
-                        "\n\nThis OTP is valid for 10 minutes."
-        );
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper =
+                    new MimeMessageHelper(message, true, "UTF-8");
 
-        mailSender.send(message);
+            helper.setFrom(from);
+            helper.setTo(to);
+            helper.setSubject("Verify your email – Queueless");
+
+            helper.setText(buildHtmlTemplate(otp), true);
+
+            mailSender.send(message);
+
+        } catch (MessagingException e) {
+            throw new RuntimeException("Failed to send OTP email");
+        }
+    }
+
+    private String buildHtmlTemplate(String otp) {
+
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Email Verification</title>
+            </head>
+            <body style="margin:0;padding:0;background-color:#f4f6f8;font-family:Arial,sans-serif;">
+            
+                <table width="100%%" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td align="center" style="padding:40px 0;">
+                            
+                            <table width="420" cellpadding="0" cellspacing="0"
+                                   style="background:#ffffff;border-radius:12px;
+                                          box-shadow:0 10px 30px rgba(0,0,0,0.15);
+                                          padding:32px;">
+                                
+                                <tr>
+                                    <td align="center" style="padding-bottom:20px;">
+                                        <h2 style="margin:0;color:#4f46e5;">
+                                            Queueless
+                                        </h2>
+                                        <p style="margin:6px 0 0;color:#6b7280;font-size:14px;">
+                                            Smart Queue Management
+                                        </p>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td style="color:#111827;font-size:15px;padding-bottom:16px;">
+                                        Hello 👋,
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td style="color:#374151;font-size:14px;padding-bottom:20px;">
+                                        Use the verification code below to complete your
+                                        Queueless registration.
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td align="center" style="padding-bottom:24px;">
+                                        <div style="
+                                            display:inline-block;
+                                            background:#eef2ff;
+                                            color:#1e3a8a;
+                                            font-size:28px;
+                                            font-weight:700;
+                                            letter-spacing:6px;
+                                            padding:14px 28px;
+                                            border-radius:10px;">
+                                            %s
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td style="color:#374151;font-size:13px;padding-bottom:16px;">
+                                        ⏳ This code is valid for <b>10 minutes</b>.
+                                        Please do not share this code with anyone.
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td style="color:#6b7280;font-size:12px;padding-bottom:28px;">
+                                        If you didn’t request this, you can safely ignore this email.
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td style="border-top:1px solid #e5e7eb;padding-top:16px;
+                                               color:#6b7280;font-size:12px;text-align:center;">
+                                        Created & maintained by <b>Vishal Bhawari</b><br>
+                                        This is an automated email. Please do not reply.
+                                    </td>
+                                </tr>
+
+                            </table>
+
+                        </td>
+                    </tr>
+                </table>
+
+            </body>
+            </html>
+        """.formatted(otp);
     }
 }

@@ -21,52 +21,64 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                // ❌ CSRF not needed for stateless REST APIs
+                /* ===============================
+                   ❌ CSRF (Not needed for JWT)
+                   =============================== */
                 .csrf(csrf -> csrf.disable())
 
-                // 🚫 No HTTP session (JWT based auth)
+                /* ===============================
+                   🚫 Stateless session (JWT)
+                   =============================== */
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
+                /* ===============================
+                   🔐 Authorization rules
+                   =============================== */
                 .authorizeHttpRequests(auth -> auth
 
-                        /* =====================================================
-                           🔓 PUBLIC – CUSTOMER / QR / LIVE QUEUE FLOW
-                           ===================================================== */
+                        /* =========================================
+                           🔓 PUBLIC – CUSTOMER / QR / LIVE QUEUE
+                           ========================================= */
                         .requestMatchers(
-                                "/q/**",                  // QR entry page
-                                "/queue.html",            // static HTML
-                                "/api/public/**",         // live queue APIs
-                                "/api/token/create",      // customer token creation
-                                "/api/auth/**"            // user register/login
+                                "/q/**",
+                                "/queue.html",
+                                "/api/public/**",
+                                "/api/token/create",
+                                "/api/auth/**"
                         ).permitAll()
 
-                        /* =====================================================
-                           🔐 LOGGED-IN USER (SHOP REGISTRATION)
-                           ===================================================== */
+                        /* =========================================
+                           🔐 LOGGED-IN USER (NORMAL USER)
+                           ========================================= */
                         .requestMatchers("/api/shop/register")
                         .authenticated()
 
-                        /* =====================================================
-                           🔐 ADMIN ONLY
-                           ===================================================== */
-                        .requestMatchers("/api/admin/**")
+                        /* =========================================
+                           🔐 ADMIN ONLY (CRITICAL FIX)
+                           ========================================= */
+                        .requestMatchers(
+                                "/api/admin/**",
+                                "/api/queue/**"      // ✅ THIS WAS MISSING
+                        )
                         .hasAuthority("ROLE_ADMIN")
 
-                        /* =====================================================
-                           🔓 WEBHOOKS (Razorpay)
-                           ===================================================== */
+                        /* =========================================
+                           🔓 WEBHOOKS
+                           ========================================= */
                         .requestMatchers("/api/webhook/**")
                         .permitAll()
 
-                        /* =====================================================
-                           ❌ EVERYTHING ELSE BLOCKED
-                           ===================================================== */
+                        /* =========================================
+                           ❌ BLOCK EVERYTHING ELSE
+                           ========================================= */
                         .anyRequest().denyAll()
                 )
 
-                // 🔐 JWT authentication filter
+                /* ===============================
+                   🔑 JWT FILTER
+                   =============================== */
                 .addFilterBefore(
                         jwtFilter,
                         UsernamePasswordAuthenticationFilter.class
