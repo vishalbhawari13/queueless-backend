@@ -1,11 +1,15 @@
 package com.queueless.service;
 
+import com.queueless.entity.Shop;
+import com.queueless.entity.enums.SubscriptionPlan;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
 
 @Service
 public class EmailService {
@@ -38,6 +42,58 @@ public class EmailService {
             throw new RuntimeException("Failed to send OTP email");
         }
     }
+
+    public void sendSubscriptionSuccessEmail(
+            Shop shop,
+            SubscriptionPlan plan,
+            LocalDate start,
+            LocalDate end
+    ) {
+
+        String html = """
+        <h2>🎉 Subscription Activated</h2>
+        <p>Your <b>%s</b> plan has been successfully activated.</p>
+        <p><b>Shop:</b> %s</p>
+        <p><b>Start:</b> %s</p>
+        <p><b>Expires:</b> %s</p>
+        <p>Thank you for choosing Queueless 🚀</p>
+    """.formatted(plan, shop.getName(), start, end);
+
+        sendHtml(shop.getName(), "Queueless Subscription Activated", html);
+    }
+
+    private void sendHtml(String to, String subject, String html) {
+        try {
+            MimeMessage msg = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(msg, true);
+            helper.setFrom(from);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(html, true);
+            mailSender.send(msg);
+        } catch (Exception e) {
+            throw new RuntimeException("Email failed");
+        }
+    }
+
+    public void sendSubscriptionExpiredEmail(
+            Shop shop,
+            SubscriptionPlan oldPlan
+    ) {
+
+        String html = """
+        <h2>⚠ Subscription Expired</h2>
+        <p>Your <b>%s</b> plan has expired.</p>
+        <p>Your shop is now on <b>FREE</b> plan.</p>
+        <p>Please upgrade to continue premium features.</p>
+    """.formatted(oldPlan);
+
+        sendHtml(shop.getName(),
+                "Queueless Subscription Expired",
+                html);
+    }
+
+
 
     private String buildHtmlTemplate(String otp) {
 

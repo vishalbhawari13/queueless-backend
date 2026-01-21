@@ -11,7 +11,7 @@ public class QrPageController {
 
     @GetMapping("/q/shop/{shopId}")
     public String openQueuePage(@PathVariable UUID shopId) {
-        // Internal forward, NOT a redirect
-        return "forward:/queue.html";
+        // pass shopId to frontend
+        return "forward:/queue.html?shopId=" + shopId;
     }
 }

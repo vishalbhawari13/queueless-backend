@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Billing | Queueless</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #4f46e5;
+            --bg: #0f172a;
+            --glass: rgba(255,255,255,0.14);
+            --border: rgba(255,255,255,0.2);
+            --success: #22c55e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at top, #6366f1, #0f172a 60%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 420px;
+            background: linear-gradient(
+                180deg,
+                rgba(255,255,255,0.16),
+                rgba(255,255,255,0.08)
+            );
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            padding: 28px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+            animation: fadeUp 0.6s ease;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(25px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            text-align: center;
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .section {
+            background: rgba(255,255,255,0.12);
+            border-radius: 16px;
+            padding: 18px;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .label {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        /* Toggle */
+        .switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.3);
+            border-radius: 999px;
+            transition: 0.3s;
+        }
+
+        .slider:before {
+            content: "";
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            top: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        input:checked + .slider {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        .note {
+            font-size: 0.9rem;
+            opacity: 0.85;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+
+        .badge {
+            display: inline-block;
+            margin-top: 14px;
+            padding: 6px 12px;
+            background: rgba(34,197,94,0.2);
+            border: 1px solid rgba(34,197,94,0.4);
+            color: #22c55e;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="card">
+    <h2>💳 Billing & Subscription</h2>
+
+    <div class="section">
+        <div class="row">
+            <div class="label">Auto-Renew Subscription</div>
+
+            <label class="switch">
+                <input type="checkbox" checked disabled>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <p class="note">
+            Your current plan renews automatically every month.
+            No interruption to service.
+        </p>
+
+        <span class="badge">Active & Protected</span>
+    </div>
+</div>
+
+</body>
+</html>

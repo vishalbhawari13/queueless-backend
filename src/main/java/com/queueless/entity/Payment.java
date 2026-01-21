@@ -1,5 +1,6 @@
 package com.queueless.entity;
 
+import com.queueless.entity.enums.PaymentStatus;
 import com.queueless.entity.enums.SubscriptionPlan;
 import jakarta.persistence.*;
 import lombok.*;
@@ -29,15 +30,16 @@ public class Payment {
     private SubscriptionPlan plan;
 
     @Column(nullable = false)
+    private int amount; // paise
+
+    @Column(nullable = false, unique = true)
     private String razorpayOrderId;
 
     private String razorpayPaymentId;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private int amount; // paise
-
-    @Column(nullable = false)
-    private boolean success;
+    private PaymentStatus status;
 
     @Builder.Default
     @Column(nullable = false, updatable = false)

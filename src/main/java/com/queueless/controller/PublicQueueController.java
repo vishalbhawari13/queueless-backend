@@ -2,6 +2,7 @@ package com.queueless.controller;
 
 import com.queueless.dto.PublicQueueResponse;
 import com.queueless.entity.Queue;
+import com.queueless.entity.Token;
 import com.queueless.entity.enums.QueueStatus;
 import com.queueless.entity.enums.TokenStatus;
 import com.queueless.repository.TokenRepository;
@@ -25,9 +26,6 @@ public class PublicQueueController {
         this.tokenRepository = tokenRepository;
     }
 
-    /**
-     * ✅ LIVE QUEUE STATUS (CORRECT + STABLE)
-     */
     @GetMapping("/{queueId}")
     public PublicQueueResponse getLiveQueueStatus(
             @PathVariable UUID queueId,
@@ -36,27 +34,26 @@ public class PublicQueueController {
 
         Queue queue = queueService.getQueueById(queueId);
 
-        // 🔔 ALWAYS FETCH LATEST CALLED TOKEN
+        // 🔔 Prefer CALLED token, fallback to queue counter
         int servingToken = tokenRepository
                 .findFirstByQueueAndStatusOrderByTokenNumberDesc(
                         queue,
                         TokenStatus.CALLED
                 )
-                .map(t -> t.getTokenNumber())
-                .orElse(0);
+                .map(Token::getTokenNumber)
+                .orElse(queue.getCurrentToken());
 
         int peopleAhead = 0;
         int estimatedWait = 0;
 
         if (yourToken != null && yourToken > servingToken) {
             peopleAhead = yourToken - servingToken - 1;
-            estimatedWait =
-                    peopleAhead * queue.getAvgServiceTimeMinutes();
+            estimatedWait = peopleAhead * queue.getAvgServiceTimeMinutes();
         }
 
         return PublicQueueResponse.builder()
                 .shopName(queue.getShop().getName())
-                .currentToken(servingToken)          // 🔔 NOW SERVING
+                .currentToken(servingToken)
                 .yourToken(yourToken)
                 .peopleAhead(Math.max(peopleAhead, 0))
                 .estimatedWaitMinutes(Math.max(estimatedWait, 0))

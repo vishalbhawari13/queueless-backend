@@ -22,30 +22,30 @@ public class RefreshTokenService {
     }
 
     /* =====================================================
-       CREATE REFRESH TOKEN (LOGIN)
+       CREATE OR UPDATE REFRESH TOKEN (LOGIN)
        ===================================================== */
-
     @Transactional
     public RefreshToken createRefreshTokenForUser(User user) {
 
-        // ✅ Enforce ONE refresh token per user
-        refreshTokenRepo.findByUser(user)
-                .ifPresent(refreshTokenRepo::delete);
+        RefreshToken refreshToken = refreshTokenRepo
+                .findByUser(user)
+                .orElse(
+                        RefreshToken.builder()
+                                .user(user)
+                                .build()
+                );
 
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .token(UUID.randomUUID().toString())
-                .expiryTime(LocalDateTime.now()
-                        .plusDays(REFRESH_TOKEN_VALIDITY_DAYS))
-                .build();
+        refreshToken.setToken(UUID.randomUUID().toString());
+        refreshToken.setExpiryTime(
+                LocalDateTime.now().plusDays(REFRESH_TOKEN_VALIDITY_DAYS)
+        );
 
         return refreshTokenRepo.save(refreshToken);
     }
 
     /* =====================================================
-       VERIFY + ROTATE REFRESH TOKEN (REFRESH API)
+       VERIFY + ROTATE REFRESH TOKEN
        ===================================================== */
-
     @Transactional
     public RefreshToken verifyAndRotateRefreshToken(String token) {
 
@@ -58,12 +58,21 @@ public class RefreshTokenService {
             throw new BusinessException("Refresh token expired");
         }
 
-        // 🔁 Rotate token (security best practice)
+        // 🔁 Rotate token
         refreshToken.setToken(UUID.randomUUID().toString());
         refreshToken.setExpiryTime(
                 LocalDateTime.now().plusDays(REFRESH_TOKEN_VALIDITY_DAYS)
         );
 
         return refreshTokenRepo.save(refreshToken);
+    }
+
+    /* =====================================================
+       LOGOUT (OPTIONAL BUT RECOMMENDED)
+       ===================================================== */
+    @Transactional
+    public void deleteByUser(User user) {
+        refreshTokenRepo.findByUser(user)
+                .ifPresent(refreshTokenRepo::delete);
     }
 }

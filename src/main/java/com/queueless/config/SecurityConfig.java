@@ -39,7 +39,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         /* =========================================
-                           🔓 PUBLIC – CUSTOMER / QR / LIVE QUEUE
+                           🔓 STATIC FILES (IMPORTANT FIX)
+                           ========================================= */
+                        .requestMatchers(
+                                "/payment.html",
+                                "/static/**",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**",
+                                "/favicon.ico"
+                        ).permitAll()
+
+                        /* =========================================
+                           🔓 PUBLIC – CUSTOMER / AUTH / QR
                            ========================================= */
                         .requestMatchers(
                                 "/q/**",
@@ -50,19 +62,18 @@ public class SecurityConfig {
                         ).permitAll()
 
                         /* =========================================
-                           🔐 LOGGED-IN USER (NORMAL USER)
+                           🔐 LOGGED-IN USER
                            ========================================= */
                         .requestMatchers("/api/shop/register")
                         .authenticated()
 
                         /* =========================================
-                           🔐 ADMIN ONLY (CRITICAL FIX)
+                           🔐 ADMIN ONLY
                            ========================================= */
                         .requestMatchers(
                                 "/api/admin/**",
-                                "/api/queue/**"      // ✅ THIS WAS MISSING
-                        )
-                        .hasAuthority("ROLE_ADMIN")
+                                "/api/queue/**"
+                        ).hasAuthority("ROLE_ADMIN")
 
                         /* =========================================
                            🔓 WEBHOOKS

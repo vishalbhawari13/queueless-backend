@@ -33,7 +33,6 @@ public class AuthService {
     /* =====================================================
        ADMIN LOGIN
        ===================================================== */
-
     @Transactional
     public AuthResponse login(AdminLoginRequest request) {
 
@@ -49,11 +48,9 @@ public class AuthService {
             throw new BusinessException("Invalid credentials");
         }
 
-        // 🔐 Generate access token
         String accessToken =
                 jwtUtil.generateAccessToken(admin.getEmail());
 
-        // 🔁 Create (or replace) refresh token
         RefreshToken refreshToken =
                 refreshTokenService.createRefreshTokenForUser(admin);
 
@@ -64,32 +61,29 @@ public class AuthService {
     }
 
     /* =====================================================
-       REFRESH ACCESS TOKEN (ROTATE REFRESH TOKEN)
+       REFRESH ACCESS TOKEN
        ===================================================== */
-
     @Transactional
     public AuthResponse refreshAccessToken(String refreshToken) {
 
-        // 🔁 Verify + rotate refresh token
-        RefreshToken rotatedToken =
+        RefreshToken rotated =
                 refreshTokenService
                         .verifyAndRotateRefreshToken(refreshToken);
 
         String newAccessToken =
                 jwtUtil.generateAccessToken(
-                        rotatedToken.getUser().getEmail()
+                        rotated.getUser().getEmail()
                 );
 
         return new AuthResponse(
                 newAccessToken,
-                rotatedToken.getToken()
+                rotated.getToken()
         );
     }
 
     /* =====================================================
-       RESPONSE RECORD
+       RESPONSE
        ===================================================== */
-
     public record AuthResponse(
             String accessToken,
             String refreshToken

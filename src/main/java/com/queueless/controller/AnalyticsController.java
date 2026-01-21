@@ -1,73 +1,69 @@
 package com.queueless.controller;
 
 import com.queueless.dto.DailyAnalyticsResponse;
-import com.queueless.entity.Queue;
+import com.queueless.dto.MonthlyAnalyticsResponse;
 import com.queueless.entity.User;
-import com.queueless.entity.enums.TokenStatus;
-import com.queueless.repository.TokenRepository;
-import com.queueless.repository.UserRepository;
-import com.queueless.service.QueueService;
+import com.queueless.service.AnalyticsService;
 import com.queueless.service.SubscriptionService;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/admin/analytics")
 public class AnalyticsController {
 
-    private final QueueService queueService;
-    private final TokenRepository tokenRepository;
-    private final UserRepository userRepository;
+    private final AnalyticsService analyticsService;
     private final SubscriptionService subscriptionService;
 
-    public AnalyticsController(QueueService queueService,
-                               TokenRepository tokenRepository,
-                               UserRepository userRepository,
-                               SubscriptionService subscriptionService) {
-        this.queueService = queueService;
-        this.tokenRepository = tokenRepository;
-        this.userRepository = userRepository;
+    public AnalyticsController(
+            AnalyticsService analyticsService,
+            SubscriptionService subscriptionService
+    ) {
+        this.analyticsService = analyticsService;
         this.subscriptionService = subscriptionService;
     }
 
-    /** DAILY ANALYTICS FOR ADMIN */
+    /* ===============================
+       📊 DAILY ANALYTICS
+       =============================== */
     @GetMapping("/today")
-    public DailyAnalyticsResponse today() {
+    public DailyAnalyticsResponse today(Authentication authentication) {
 
-        User admin = getAuthenticatedAdmin();
+        User admin = (User) authentication.getPrincipal();
 
-        Queue queue = queueService.getActiveQueueByShopId(admin.getShop().getId());
+        validateAdmin(admin);
 
-        // 💳 PLAN ENFORCEMENT (ANALYTICS)
-        subscriptionService.validateAnalyticsAccess(queue.getShop());
+        // 🔐 PLAN CHECK (CANNOT BE BYPASSED)
+        subscriptionService.validateAnalyticsAccess(admin.getShop());
 
-        long completed = tokenRepository.countByQueueAndStatus(queue, TokenStatus.COMPLETED);
-
-        int revenue = tokenRepository.sumBillAmountByQueueAndStatus(queue, TokenStatus.COMPLETED);
-
-        int avgBill = completed == 0 ? 0 : (int) (revenue / completed);
-
-        return DailyAnalyticsResponse.builder()
-                .totalTokensCompleted((int) completed)
-                .totalRevenue(revenue)
-                .averageBill(avgBill)
-                .build();
+        return analyticsService.today(admin.getShop());
     }
 
-    /** SAFE method to get logged-in admin */
-    private User getAuthenticatedAdmin() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        User user = (User) auth.getPrincipal();
+    /* ===============================
+       📈 MONTHLY ANALYTICS
+       =============================== */
+    @GetMapping("/monthly")
+    public MonthlyAnalyticsResponse monthly(Authentication authentication) {
 
+        User admin = (User) authentication.getPrincipal();
+
+        validateAdmin(admin);
+
+        // 🔐 ADVANCED ANALYTICS ONLY (PRO / PRO MAX)
+        subscriptionService.validateAdvancedAnalyticsAccess(admin.getShop());
+
+        return analyticsService.monthly(admin.getShop());
+    }
+
+    /* ===============================
+       🔒 COMMON VALIDATION
+       =============================== */
+    private void validateAdmin(User user) {
         if (!"ROLE_ADMIN".equals(user.getRole())) {
-            throw new RuntimeException("Access denied: Admin only");
+            throw new RuntimeException("Admin access only");
         }
-
         if (user.getShop() == null) {
-            throw new RuntimeException("Admin has no associated shop");
+            throw new RuntimeException("Admin has no shop");
         }
-
-        return user;
     }
 }

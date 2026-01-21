@@ -12,6 +12,10 @@ import java.util.UUID;
         name = "tokens",
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = {"queue_id", "token_number"})
+        },
+        indexes = {
+                @Index(name = "idx_token_status", columnList = "status"),
+                @Index(name = "idx_token_created_at", columnList = "createdAt")
         }
 )
 @Getter
@@ -25,31 +29,46 @@ public class Token {
     @GeneratedValue
     private UUID id;
 
-    @ManyToOne
+    /* ===============================
+       🔗 RELATIONSHIPS
+       =============================== */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "queue_id", nullable = false)
     private Queue queue;
 
+    /* ===============================
+       🎟️ TOKEN INFO
+       =============================== */
     @Column(name = "token_number", nullable = false)
     private int tokenNumber;
 
     @Column(nullable = false)
     private String customerName;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 15)
     private String phone;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TokenStatus status;
 
-    // 💰 BILLING (NEW)
+    /* ===============================
+       💰 BILLING
+       =============================== */
     @Column
     private Integer billAmount; // ₹
 
     @Column
     private String serviceType;
 
-    @Builder.Default
+    /* ===============================
+       ⏱️ TIMESTAMP
+       =============================== */
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    public void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

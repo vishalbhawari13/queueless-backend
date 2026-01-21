@@ -3,6 +3,7 @@ package com.queueless.service;
 import com.queueless.entity.Payment;
 import com.queueless.entity.Shop;
 import com.queueless.entity.ShopSubscription;
+import com.queueless.entity.enums.PaymentStatus;
 import com.queueless.entity.enums.SubscriptionPlan;
 import com.queueless.exception.BusinessException;
 import com.queueless.repository.PaymentRepository;
@@ -20,67 +21,78 @@ import java.util.Map;
 @Service
 public class PaymentService {
 
-    @Value("${razorpay.key-id}")
-    private String keyId;
-
-    @Value("${razorpay.key-secret}")
-    private String keySecret;
+    /* ===============================
+       RAZORPAY CONFIG
+       =============================== */
+    private final String keyId;
+    private final String keySecret;
 
     private final PaymentRepository paymentRepository;
     private final ShopSubscriptionRepository subscriptionRepository;
+    private final EmailService emailService;
 
-    public PaymentService(PaymentRepository paymentRepository,
-                          ShopSubscriptionRepository subscriptionRepository) {
+    public PaymentService(
+            @Value("${razorpay.key-id}") String keyId,
+            @Value("${razorpay.key-secret}") String keySecret,
+            PaymentRepository paymentRepository,
+            ShopSubscriptionRepository subscriptionRepository,
+            EmailService emailService
+    ) {
+        this.keyId = keyId;
+        this.keySecret = keySecret;
         this.paymentRepository = paymentRepository;
         this.subscriptionRepository = subscriptionRepository;
+        this.emailService = emailService;
     }
 
-    /**
-     * Create Razorpay order
-     */
+    /* ===============================
+       CREATE ORDER
+       =============================== */
     public Map<String, Object> createOrder(
             Shop shop,
             SubscriptionPlan plan
     ) throws Exception {
 
-        int amount = switch (plan) {
-            case BASIC -> 49900; // ₹499
-            case PRO -> 99900;   // ₹999
-            default -> throw new BusinessException("Invalid plan");
-        };
+        int amount = plan.getPriceInPaise();
+
+        if (amount <= 0) {
+            throw new BusinessException("This plan does not require payment");
+        }
 
         RazorpayClient client =
                 new RazorpayClient(keyId, keySecret);
 
-        // ✅ Razorpay receipt must be <= 40 chars
-        String receipt =
-                "shop_" + shop.getId().toString().substring(0, 12);
+        JSONObject request = new JSONObject();
+        request.put("amount", amount);
+        request.put("currency", "INR");
+        request.put(
+                "receipt",
+                "shop_" + shop.getId().toString().substring(0, 12)
+        );
 
-        JSONObject orderRequest = new JSONObject();
-        orderRequest.put("amount", amount);
-        orderRequest.put("currency", "INR");
-        orderRequest.put("receipt", receipt);
-
-        Order order = client.orders.create(orderRequest);
+        Order order = client.orders.create(request);
 
         paymentRepository.save(
                 Payment.builder()
                         .shop(shop)
                         .plan(plan)
-                        .razorpayOrderId(order.get("id"))
                         .amount(amount)
-                        .success(false)
+                        .razorpayOrderId(order.get("id"))
+                        .status(PaymentStatus.CREATED)
                         .build()
         );
 
         return Map.of(
                 "orderId", order.get("id"),
                 "amount", amount,
-                "currency", "INR"
+                "currency", "INR",
+                "key", keyId
         );
     }
 
-
+    /* ===============================
+       WEBHOOK HANDLER
+       =============================== */
     public void processWebhook(
             String payload,
             String signature,
@@ -88,8 +100,11 @@ public class PaymentService {
     ) {
 
         try {
-            // 🔐 Verify webhook signature
-            Utils.verifyWebhookSignature(payload, signature, secret);
+            Utils.verifyWebhookSignature(
+                    payload,
+                    signature,
+                    secret
+            );
         } catch (Exception e) {
             throw new RuntimeException("Invalid webhook signature");
         }
@@ -97,40 +112,49 @@ public class PaymentService {
         JSONObject json = new JSONObject(payload);
         String event = json.getString("event");
 
-        // ✅ We only care about successful payments
-        if (!event.equals("payment.captured")) {
-            return;
+        JSONObject entity = json
+                .getJSONObject("payload")
+                .getJSONObject("payment")
+                .getJSONObject("entity");
+
+        String orderId = entity.getString("order_id");
+
+        Payment payment = paymentRepository
+                .findByRazorpayOrderId(orderId)
+                .orElseThrow(() ->
+                        new BusinessException("Payment not found")
+                );
+
+        if ("payment.captured".equals(event)) {
+            handleSuccess(
+                    payment,
+                    entity.getString("id")
+            );
         }
 
-        JSONObject paymentEntity =
-                json.getJSONObject("payload")
-                        .getJSONObject("payment")
-                        .getJSONObject("entity");
-
-        String orderId = paymentEntity.getString("order_id");
-        String paymentId = paymentEntity.getString("id");
-
-        // 🔁 Idempotent call (safe to call multiple times)
-        handlePaymentSuccess(orderId, paymentId);
+        if ("payment.failed".equals(event)) {
+            payment.setStatus(PaymentStatus.FAILED);
+            paymentRepository.save(payment);
+        }
     }
 
-    /**
-     * Called after payment success (webhook / verify API)
-     */
-    public void handlePaymentSuccess(
-            String orderId,
+    /* ===============================
+       SUCCESS FLOW
+       =============================== */
+    private void handleSuccess(
+            Payment payment,
             String paymentId
     ) {
 
-        Payment payment = paymentRepository.findByRazorpayOrderId(orderId)
-                .orElseThrow(() -> new BusinessException("Order not found"));
+        if (payment.getStatus() == PaymentStatus.PAID) return;
 
         payment.setRazorpayPaymentId(paymentId);
-        payment.setSuccess(true);
+        payment.setStatus(PaymentStatus.PAID);
         paymentRepository.save(payment);
 
-        // 🔓 Deactivate old subscription if exists
-        subscriptionRepository.findByShopIdAndActiveTrue(
+        // 🔁 Disable old subscription
+        subscriptionRepository
+                .findByShopIdAndActiveTrue(
                         payment.getShop().getId()
                 )
                 .ifPresent(old -> {
@@ -138,14 +162,24 @@ public class PaymentService {
                     subscriptionRepository.save(old);
                 });
 
-        // ✅ Activate new subscription
+        LocalDate start = LocalDate.now();
+        LocalDate end = start.plusDays(30);
+
         subscriptionRepository.save(
                 ShopSubscription.builder()
                         .shop(payment.getShop())
                         .plan(payment.getPlan())
-                        .startDate(LocalDate.now())
+                        .startDate(start)
+                        .endDate(end)
                         .active(true)
                         .build()
+        );
+
+        emailService.sendSubscriptionSuccessEmail(
+                payment.getShop(),
+                payment.getPlan(),
+                start,
+                end
         );
     }
 }

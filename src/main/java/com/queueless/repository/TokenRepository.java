@@ -14,9 +14,9 @@ import java.util.UUID;
 
 public interface TokenRepository extends JpaRepository<Token, UUID> {
 
-    /* =======================
-       ADMIN FLOW
-       ======================= */
+    /* ===============================
+       BASIC TOKEN FLOW
+       =============================== */
 
     List<Token> findByQueueAndStatusOrderByTokenNumberAsc(
             Queue queue,
@@ -28,19 +28,10 @@ public interface TokenRepository extends JpaRepository<Token, UUID> {
             int tokenNumber
     );
 
-    /* =======================
-       🔔 NOW SERVING TOKEN (FIX)
-       ======================= */
-
-    // ✅ LATEST CALLED TOKEN (highest token number)
     Optional<Token> findFirstByQueueAndStatusOrderByTokenNumberDesc(
             Queue queue,
             TokenStatus status
     );
-
-    /* =======================
-       TOKEN CREATION RULES
-       ======================= */
 
     boolean existsByQueueAndPhone(
             Queue queue,
@@ -52,23 +43,52 @@ public interface TokenRepository extends JpaRepository<Token, UUID> {
             LocalDateTime createdAfter
     );
 
-    /* =======================
-       ANALYTICS
-       ======================= */
+    /* ===============================
+       📊 DAILY ANALYTICS (SAFE)
+       =============================== */
 
-    long countByQueueAndStatus(
-            Queue queue,
-            TokenStatus status
-    );
+    @Query("""
+        SELECT COUNT(t)
+        FROM Token t
+        WHERE t.queue.shop.id = :shopId
+          AND t.status = com.queueless.entity.enums.TokenStatus.COMPLETED
+          AND t.createdAt >= CURRENT_DATE
+    """)
+    int countCompletedToday(@Param("shopId") UUID shopId);
 
     @Query("""
         SELECT COALESCE(SUM(t.billAmount), 0)
         FROM Token t
-        WHERE t.queue = :queue
-          AND t.status = :status
+        WHERE t.queue.shop.id = :shopId
+          AND t.status = com.queueless.entity.enums.TokenStatus.COMPLETED
+          AND t.createdAt >= CURRENT_DATE
     """)
-    int sumBillAmountByQueueAndStatus(
-            @Param("queue") Queue queue,
-            @Param("status") TokenStatus status
+    int sumRevenueToday(@Param("shopId") UUID shopId);
+
+    /* ===============================
+       📈 MONTHLY ANALYTICS (SAFE)
+       =============================== */
+
+    @Query("""
+        SELECT COUNT(t)
+        FROM Token t
+        WHERE t.queue.shop.id = :shopId
+          AND t.status = com.queueless.entity.enums.TokenStatus.COMPLETED
+          AND FUNCTION('MONTH', t.createdAt) = :month
+          AND FUNCTION('YEAR', t.createdAt) = FUNCTION('YEAR', CURRENT_DATE)
+        GROUP BY FUNCTION('DAY', t.createdAt)
+        ORDER BY FUNCTION('DAY', t.createdAt)
+    """)
+    List<Integer> dailyCountsForMonth(
+            @Param("shopId") UUID shopId,
+            @Param("month") int month
     );
+
+    @Query("""
+    SELECT COALESCE(MAX(t.tokenNumber), 0)
+    FROM Token t
+    WHERE t.queue = :queue
+""")
+    int findMaxTokenNumber(@Param("queue") Queue queue);
+
 }

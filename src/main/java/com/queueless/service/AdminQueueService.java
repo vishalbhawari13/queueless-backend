@@ -1,5 +1,6 @@
 package com.queueless.service;
 
+import com.queueless.dto.AdminTokenResponse;
 import com.queueless.entity.Queue;
 import com.queueless.entity.Token;
 import com.queueless.entity.User;
@@ -25,10 +26,6 @@ public class AdminQueueService {
         this.tokenRepository = tokenRepository;
     }
 
-    /* =====================================================
-       CALL NEXT TOKEN
-       ===================================================== */
-
     @Transactional
     public Token callNext(Queue queue, User admin) {
 
@@ -38,24 +35,24 @@ public class AdminQueueService {
             throw new BusinessException("Queue is closed");
         }
 
-        return tokenRepository
+        Token next = tokenRepository
                 .findByQueueAndStatusOrderByTokenNumberAsc(
                         queue,
                         TokenStatus.WAITING
                 )
                 .stream()
                 .findFirst()
-                .map(token -> {
-                    token.setStatus(TokenStatus.CALLED);
-                    return tokenRepository.save(token);
-                })
                 .orElseThrow(() ->
                         new BusinessException("No waiting tokens"));
-    }
 
-    /* =====================================================
-       COMPLETE TOKEN → AUTO CALL NEXT
-       ===================================================== */
+        next.setStatus(TokenStatus.CALLED);
+        tokenRepository.save(next);
+
+        queue.setCurrentToken(next.getTokenNumber());
+        queueRepository.save(queue);
+
+        return next;
+    }
 
     @Transactional
     public Token completeToken(
@@ -76,15 +73,9 @@ public class AdminQueueService {
         token.setServiceType(serviceType);
         tokenRepository.save(token);
 
-        // 🔔 AUTO CALL NEXT TOKEN
         autoCallNext(token.getQueue());
-
         return token;
     }
-
-    /* =====================================================
-       SKIP TOKEN → AUTO CALL NEXT
-       ===================================================== */
 
     @Transactional
     public Token skipToken(Token token, User admin) {
@@ -98,28 +89,36 @@ public class AdminQueueService {
         token.setStatus(TokenStatus.SKIPPED);
         tokenRepository.save(token);
 
-        // 🔔 AUTO CALL NEXT TOKEN
         autoCallNext(token.getQueue());
-
         return token;
     }
 
-    /* =====================================================
-       CLOSE QUEUE
-       ===================================================== */
-
     @Transactional
-    public Queue closeQueue(Queue queue, User admin) {
+    public void closeQueue(Queue queue, User admin) {
 
         validateOwnership(queue, admin);
         queue.setStatus(QueueStatus.CLOSED);
-        return queueRepository.save(queue);
+        queueRepository.save(queue);
     }
 
-    /* =====================================================
-       INTERNAL HELPERS
-       ===================================================== */
+    /* ===============================
+       DTO MAPPER
+       =============================== */
+    public AdminTokenResponse toAdminResponse(Token token) {
+        return AdminTokenResponse.builder()
+                .tokenId(token.getId())
+                .tokenNumber(token.getTokenNumber())
+                .status(token.getStatus().name())
+                .customerName(token.getCustomerName())
+                .phone(token.getPhone())
+                .queueId(token.getQueue().getId())
+                .currentToken(token.getQueue().getCurrentToken())
+                .build();
+    }
 
+    /* ===============================
+       INTERNAL
+       =============================== */
     private void autoCallNext(Queue queue) {
 
         tokenRepository
@@ -132,6 +131,9 @@ public class AdminQueueService {
                 .ifPresent(next -> {
                     next.setStatus(TokenStatus.CALLED);
                     tokenRepository.save(next);
+
+                    queue.setCurrentToken(next.getTokenNumber());
+                    queueRepository.save(queue);
                 });
     }
 

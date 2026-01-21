@@ -4,130 +4,89 @@
     <title>Queueless – Live Queue</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
     <style>
-        * { box-sizing: border-box; }
+        :root {
+            --primary: #6366f1;
+            --secondary: #4f46e5;
+            --success: #22c55e;
+            --warning: #fbbf24;
+            --border: rgba(255,255,255,0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: "Inter", sans-serif;
+        }
 
         body {
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #4f46e5, #06b6d4);
+            background: radial-gradient(circle at top, #6366f1, #0f172a 60%);
+            color: white;
             min-height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             padding: 16px;
         }
 
         .card {
-            width: 100%;
             max-width: 420px;
-            background: #ffffff;
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-            animation: fadeUp 0.6s ease;
-        }
-
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            width: 100%;
+            padding: 26px;
+            border-radius: 22px;
+            backdrop-filter: blur(20px);
+            background: rgba(255,255,255,0.14);
+            border: 1px solid var(--border);
         }
 
         h2 {
             text-align: center;
-            margin: 0 0 12px;
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #111827;
+            margin-bottom: 14px;
         }
 
         .live-box {
-            background: #f1f5f9;
-            border-radius: 12px;
-            padding: 14px;
-            text-align: center;
-            font-size: 0.95rem;
-            color: #1f2937;
+            padding: 16px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 16px;
             margin-bottom: 18px;
+            text-align: center;
+            line-height: 1.7;
         }
 
-        input {
+        input, button {
             width: 100%;
-            padding: 12px 14px;
-            border-radius: 10px;
-            border: 1px solid #d1d5db;
+            padding: 14px;
             margin-bottom: 12px;
-            font-size: 0.95rem;
+            border-radius: 14px;
+            border: none;
         }
 
         button {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
             color: white;
-            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
         }
 
-        .success {
-            margin-top: 16px;
-            background: #ecfdf5;
-            border-radius: 12px;
-            padding: 16px;
-            text-align: center;
-            color: #065f46;
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         .token-number {
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin-top: 6px;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--success);
+            margin-top: 10px;
         }
 
-        /* 🎉 POPUP */
-        .popup {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 999;
-        }
-
-        .popup-content {
-            background: white;
-            border-radius: 18px;
-            padding: 28px;
-            max-width: 340px;
-            width: 90%;
-            text-align: center;
-            animation: pop 0.4s ease;
-        }
-
-        @keyframes pop {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        .popup h3 {
-            margin: 0;
-            font-size: 1.4rem;
-            color: #16a34a;
-        }
-
-        .popup p {
-            color: #374151;
-            margin: 10px 0 18px;
-        }
-
-        .popup button {
-            background: #16a34a;
+        .warning {
+            background: rgba(251,191,36,0.25);
+            padding: 10px;
+            border-radius: 12px;
+            margin-top: 10px;
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -138,120 +97,145 @@
     <h2 id="shopName">Loading…</h2>
 
     <div class="live-box" id="liveInfo">
-        Loading live queue…
+        Fetching queue…
     </div>
 
     <input id="name" placeholder="Your name">
     <input id="phone" placeholder="Phone number">
 
-    <button onclick="joinQueue()">Join Queue</button>
-
-    <div id="result"></div>
+    <button id="joinBtn">Join Queue</button>
 </div>
-
-<!-- 🎉 HAPPY POPUP -->
-<div class="popup" id="popup">
-    <div class="popup-content">
-        <h3>🎉 It's Your Turn!</h3>
-        <p>Please proceed to the counter.<br>Thank you for waiting 🙏</p>
-        <button onclick="closePopup()">Got it</button>
-    </div>
-</div>
-
-<!-- 🔔 SOUND -->
-<audio id="ding">
-    <source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" type="audio/ogg">
-</audio>
 
 <script>
-    const shopId = window.location.pathname.split("/").pop();
-    let queueId = null;
-    let myToken = localStorage.getItem("myToken");
-    let notified = localStorage.getItem("notified") === "true";
+    const API = "http://localhost:8080";
 
-    async function loadShopQueue() {
-        const res = await fetch(`/api/public/shop/${shopId}`);
-        const data = await res.json();
-
-        queueId = data.queueId;
-        document.getElementById("shopName").innerText = data.shopName;
+    /* ===============================
+       GET QUEUE ID FROM URL
+       /q/shop/{queueId}
+       =============================== */
+    function resolveQueueId() {
+        const parts = window.location.pathname.split("/");
+        if (parts[1] === "q" && parts[2] === "shop") {
+            return parts[3];
+        }
+        return null;
     }
 
-    async function pollQueue() {
-        if (!queueId) return;
+    const queueId = resolveQueueId();
 
-        let url = `/api/public/queue/${queueId}`;
-        if (myToken) url += `?yourToken=${myToken}`;
+    const shopNameEl = document.getElementById("shopName");
+    const liveInfoEl = document.getElementById("liveInfo");
+    const joinBtn = document.getElementById("joinBtn");
 
-        const res = await fetch(url);
-        const data = await res.json();
+    let myToken = localStorage.getItem(`token_${queueId}`);
 
-        let text = `🔔 Now Serving: Token ${data.currentToken}`;
+    if (!queueId) {
+        liveInfoEl.innerText = "❌ Invalid queue link";
+        joinBtn.disabled = true;
+        throw new Error("queueId missing");
+    }
 
-        if (myToken) {
-            text += `<br>🎟 Your Token: ${myToken}`;
-            text += `<br>👥 People Ahead: ${data.peopleAhead}`;
-            text += `<br>⏳ Estimated Wait: ${data.estimatedWaitMinutes} min`;
-        }
+    /* ===============================
+       LOAD QUEUE STATUS
+       =============================== */
+    async function loadQueue() {
+        try {
+            const res = await fetch(
+                `${API}/api/public/queue/${queueId}` +
+                (myToken ? `?yourToken=${myToken}` : "")
+            );
+            if (!res.ok) throw new Error();
 
-        document.getElementById("liveInfo").innerHTML = text;
+            const data = await res.json();
 
-        // 🎉 SHOW POPUP
-        if (myToken && Number(myToken) === data.currentToken && !notified) {
-            notified = true;
-            localStorage.setItem("notified", "true");
+            shopNameEl.innerText = data.shopName;
 
-            document.getElementById("popup").style.display = "flex";
-            document.getElementById("ding").play();
+            let html = `
+                🔔 Now Serving: <b>${data.currentToken}</b><br>
+                👥 People Ahead: <b>${data.peopleAhead}</b><br>
+                ⏱ Est. Wait: <b>${data.estimatedWaitMinutes} min</b>
+            `;
 
-            if (navigator.vibrate) {
-                navigator.vibrate([300, 200, 300]);
+            if (!data.queueOpen) {
+                html += `<div class="warning">🚫 Queue is closed</div>`;
+                joinBtn.disabled = true;
             }
+
+            if (data.yourToken !== null) {
+                html += `
+                    <div class="token-number">
+                        Your Token: ${data.yourToken}
+                    </div>
+                `;
+                joinBtn.disabled = true;
+            }
+
+            liveInfoEl.innerHTML = html;
+
+        } catch (e) {
+            liveInfoEl.innerText = "❌ Queue unavailable";
+            joinBtn.disabled = true;
         }
     }
 
-    function closePopup() {
-        document.getElementById("popup").style.display = "none";
-    }
-
-    async function joinQueue() {
+    /* ===============================
+       JOIN QUEUE (WITH LOCATION)
+       =============================== */
+    function joinQueue() {
         const name = document.getElementById("name").value.trim();
         const phone = document.getElementById("phone").value.trim();
 
         if (!name || !phone) {
-            alert("Please enter name and phone number");
+            alert("Enter name and phone");
             return;
         }
 
-        const payload = {
-            queueId,
-            customerName: name,
-            phone,
-            latitude: 19.076,
-            longitude: 72.8777
-        };
+        joinBtn.disabled = true;
+        joinBtn.innerText = "Joining…";
 
-        const res = await fetch("/api/token/create", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
+        navigator.geolocation.getCurrentPosition(
+            async position => {
+                try {
+                    const res = await fetch(`${API}/api/token/create`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            queueId,
+                            customerName: name,
+                            phone,
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        })
+                    });
 
-        const token = await res.json();
-        myToken = token.tokenNumber;
-        localStorage.setItem("myToken", myToken);
-        localStorage.removeItem("notified");
+                    if (!res.ok) throw new Error();
 
-        document.getElementById("result").innerHTML = `
-            <div class="success">
-                🎉 Your Token
-                <div class="token-number">${myToken}</div>
-            </div>
-        `;
+                    const token = await res.json();
+
+                    myToken = token.tokenNumber;
+                    localStorage.setItem(`token_${queueId}`, myToken);
+
+                    joinBtn.innerText = "Joined";
+                    loadQueue();
+
+                } catch {
+                    joinBtn.disabled = false;
+                    joinBtn.innerText = "Join Queue";
+                    alert("Failed to join queue");
+                }
+            },
+            () => {
+                alert("📍 Location permission is required to join the queue");
+                joinBtn.disabled = false;
+                joinBtn.innerText = "Join Queue";
+            }
+        );
     }
 
-    loadShopQueue();
-    setInterval(pollQueue, 5000);
+    joinBtn.onclick = joinQueue;
+
+    loadQueue();
+    setInterval(loadQueue, 5000); // refresh every 5 seconds
 </script>
 
 </body>

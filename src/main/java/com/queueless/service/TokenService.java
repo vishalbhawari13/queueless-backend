@@ -13,8 +13,8 @@ import com.queueless.util.GeoUtils;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 public class TokenService {
@@ -24,46 +24,48 @@ public class TokenService {
     private final TokenAttemptRepository tokenAttemptRepository;
     private final SubscriptionService subscriptionService;
 
-    public TokenService(TokenRepository tokenRepository,
-                        QueueRepository queueRepository,
-                        TokenAttemptRepository tokenAttemptRepository,
-                        SubscriptionService subscriptionService) {
+    public TokenService(
+            TokenRepository tokenRepository,
+            QueueRepository queueRepository,
+            TokenAttemptRepository tokenAttemptRepository,
+            SubscriptionService subscriptionService
+    ) {
         this.tokenRepository = tokenRepository;
         this.queueRepository = queueRepository;
         this.tokenAttemptRepository = tokenAttemptRepository;
         this.subscriptionService = subscriptionService;
     }
 
+    /* =====================================================
+       CREATE TOKEN (THREAD-SAFE & DUPLICATE-PROOF)
+       ===================================================== */
     @Transactional
     public Token generateToken(
-            Queue queue,
+            UUID queueId,
             String name,
             String phone,
             double customerLat,
             double customerLng
     ) {
 
-        // 1️⃣ Queue must be open
+        /* ===============================
+           1️⃣ LOCK QUEUE ROW
+           =============================== */
+        Queue queue = queueRepository.findByIdForUpdate(queueId)
+                .orElseThrow(() -> new BusinessException("Queue not found"));
+
         if (queue.getStatus() != QueueStatus.OPEN) {
             throw new BusinessException("Queue is closed");
         }
 
-        // 2️⃣ 💳 SUBSCRIPTION ENFORCEMENT (DAILY)
-        LocalDateTime startOfToday =
-                LocalDate.now().atStartOfDay();
+        /* ===============================
+           2️⃣ SUBSCRIPTION LIMIT
+           =============================== */
+        subscriptionService.validateTokenLimit(queue.getShop());
 
-        long tokensToday =
-                tokenRepository.countByQueueAndCreatedAtAfter(
-                        queue,
-                        startOfToday
-                );
-
-        subscriptionService.validateTokenLimit(
-                queue.getShop(),
-                (int) tokensToday
-        );
-
-        // 3️⃣ 📍 LOCATION CHECK
+        /* ===============================
+           3️⃣ LOCATION CHECK
+           =============================== */
         double distance = GeoUtils.distanceInMeters(
                 customerLat,
                 customerLng,
@@ -75,14 +77,19 @@ public class TokenService {
             throw new BusinessException("You are too far from the shop");
         }
 
-        // 4️⃣ One active token per phone per queue
+        /* ===============================
+           4️⃣ ONE TOKEN PER PHONE
+           =============================== */
         if (tokenRepository.existsByQueueAndPhone(queue, phone)) {
-            throw new BusinessException("Token already generated for this number");
+            throw new BusinessException(
+                    "Token already generated for this number"
+            );
         }
 
-        // 5️⃣ Rate limit: 5 attempts per 10 minutes
-        LocalDateTime tenMinutesAgo =
-                LocalDateTime.now().minusMinutes(10);
+        /* ===============================
+           5️⃣ RATE LIMIT (ANTI-SPAM)
+           =============================== */
+        LocalDateTime tenMinutesAgo = LocalDateTime.now().minusMinutes(10);
 
         long attempts =
                 tokenAttemptRepository.countByPhoneAndCreatedAtAfter(
@@ -91,10 +98,11 @@ public class TokenService {
                 );
 
         if (attempts >= 5) {
-            throw new BusinessException("Too many attempts. Try again later");
+            throw new BusinessException(
+                    "Too many attempts. Try again later"
+            );
         }
 
-        // 6️⃣ Record attempt
         tokenAttemptRepository.save(
                 TokenAttempt.builder()
                         .phone(phone)
@@ -102,15 +110,21 @@ public class TokenService {
                         .build()
         );
 
-        // 7️⃣ Generate token number (safe due to locking + transaction)
-        int nextToken = queue.getCurrentToken() + 1;
-        queue.setCurrentToken(nextToken);
-        queueRepository.save(queue);
+        /* ===============================
+           6️⃣ SAFE TOKEN NUMBER GENERATION
+           🔥 SOURCE OF TRUTH = TOKEN TABLE
+           =============================== */
+        int lastTokenNumber =
+                tokenRepository.findMaxTokenNumber(queue);
 
-        // 8️⃣ Save token
+        int nextTokenNumber = lastTokenNumber + 1;
+
+        /* ===============================
+           7️⃣ SAVE TOKEN
+           =============================== */
         Token token = Token.builder()
                 .queue(queue)
-                .tokenNumber(nextToken)
+                .tokenNumber(nextTokenNumber)
                 .customerName(name)
                 .phone(phone)
                 .status(TokenStatus.WAITING)

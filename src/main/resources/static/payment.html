@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Pricing | Queueless</title>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #4f46e5;
+            --bg: #0f172a;
+            --glass: rgba(255,255,255,0.1);
+            --border: rgba(255,255,255,0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Inter", sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at top, #6366f1, #0f172a 60%);
+            min-height: 100vh;
+            padding: 30px 16px;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        header h1 {
+            font-size: clamp(2rem, 4vw, 2.8rem);
+            font-weight: 700;
+        }
+
+        header p {
+            opacity: 0.85;
+            margin-top: 10px;
+        }
+
+        .plans {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 30px;
+        }
+
+        .card {
+            background: linear-gradient(
+                180deg,
+                rgba(255,255,255,0.12),
+                rgba(255,255,255,0.05)
+            );
+            backdrop-filter: blur(18px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px;
+            position: relative;
+            transition: all 0.35s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-12px) scale(1.02);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+        }
+
+        .card h2 {
+            font-size: 1.4rem;
+            margin-bottom: 6px;
+        }
+
+        .price {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 18px 0;
+        }
+
+        .price span {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        ul {
+            list-style: none;
+            margin-bottom: 22px;
+        }
+
+        ul li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+
+        ul li::before {
+            content: "✔";
+            color: #22c55e;
+            font-weight: bold;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .primary {
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            color: white;
+        }
+
+        .primary:hover {
+            box-shadow: 0 10px 25px rgba(99,102,241,0.6);
+            transform: translateY(-2px);
+        }
+
+        .secondary {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            cursor: not-allowed;
+        }
+
+        .badge {
+            position: absolute;
+            top: 18px;
+            right: -45px;
+            background: #22c55e;
+            color: #022c22;
+            padding: 6px 50px;
+            transform: rotate(45deg);
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .analytics {
+            margin-top: 60px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .analytics-card {
+            background: linear-gradient(
+                180deg,
+                rgba(255,255,255,0.12),
+                rgba(255,255,255,0.05)
+            );
+            backdrop-filter: blur(18px);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 22px;
+            text-align: center;
+        }
+
+        .analytics-card h3 {
+            font-size: 1rem;
+            opacity: 0.85;
+        }
+
+        .analytics-card p {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+
+        #analyticsLocked {
+            margin-top: 40px;
+            text-align: center;
+            opacity: 0.85;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <header>
+        <h1>Choose Your Plan</h1>
+        <p>Upgrade anytime • Secure payments • Fair daily limits</p>
+    </header>
+
+    <section class="plans">
+
+        <div class="card">
+            <h2>FREE</h2>
+            <div class="price">₹0 <span>/ trial</span></div>
+            <ul>
+                <li>20 tokens / day</li>
+                <li>No analytics</li>
+            </ul>
+            <button class="secondary">Current Plan</button>
+        </div>
+
+        <div class="card">
+            <h2>BASIC</h2>
+            <div class="price">₹499 <span>/ month</span></div>
+            <ul>
+                <li>40 tokens / day</li>
+                <li>Daily analytics</li>
+            </ul>
+            <button class="primary" onclick="buyPlan('BASIC')">Upgrade</button>
+        </div>
+
+        <div class="card">
+            <div class="badge">POPULAR</div>
+            <h2>PRO</h2>
+            <div class="price">₹999 <span>/ month</span></div>
+            <ul>
+                <li>70 tokens / day</li>
+                <li>Advanced analytics</li>
+            </ul>
+            <button class="primary" onclick="buyPlan('PRO')">Upgrade</button>
+        </div>
+
+        <div class="card">
+            <h2>PRO MAX</h2>
+            <div class="price">₹1499 <span>/ month</span></div>
+            <ul>
+                <li>200 tokens / day</li>
+                <li>Full analytics</li>
+            </ul>
+            <button class="primary" onclick="buyPlan('PRO_MAX')">Upgrade</button>
+        </div>
+
+    </section>
+
+    <section class="analytics" id="analyticsBox" style="display:none;">
+        <div class="analytics-card">
+            <h3>Tokens Completed</h3>
+            <p id="tokensDone">0</p>
+        </div>
+        <div class="analytics-card">
+            <h3>Revenue</h3>
+            <p>₹<span id="revenue">0</span></p>
+        </div>
+        <div class="analytics-card">
+            <h3>Avg Bill</h3>
+            <p>₹<span id="avgBill">0</span></p>
+        </div>
+    </section>
+
+    <div id="analyticsLocked">
+        🔒 Analytics locked for your current plan. Upgrade to unlock insights.
+    </div>
+
+</div>
+
+<script>
+    async function loadAnalytics() {
+        const jwt = localStorage.getItem("jwt");
+        if (!jwt) return;
+
+        const res = await fetch("/api/admin/analytics/today", {
+            headers: { Authorization: "Bearer " + jwt }
+        });
+
+        if (!res.ok) {
+            document.getElementById("analyticsLocked").style.display = "block";
+            return;
+        }
+
+        const data = await res.json();
+        tokensDone.innerText = data.totalTokensCompleted;
+        revenue.innerText = data.totalRevenue;
+        avgBill.innerText = data.averageBill;
+        analyticsBox.style.display = "grid";
+    }
+
+    async function buyPlan(plan) {
+        const jwt = localStorage.getItem("jwt");
+        if (!jwt) return alert("Please login");
+
+        const res = await fetch(`/api/admin/payment/create-order?plan=${plan}`, {
+            method: "POST",
+            headers: { Authorization: "Bearer " + jwt }
+        });
+
+        const data = await res.json();
+
+        new Razorpay({
+            key: data.key,
+            amount: data.amount,
+            currency: "INR",
+            order_id: data.orderId,
+            name: "Queueless",
+            description: plan + " Subscription",
+            theme: { color: "#6366f1" }
+        }).open();
+    }
+
+    loadAnalytics();
+</script>
+
+</body>
+</html>

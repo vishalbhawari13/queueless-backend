@@ -17,13 +17,23 @@ public class QueueController {
         this.queueService = queueService;
     }
 
+    /* ===============================
+       CREATE / REOPEN TODAY QUEUE
+       =============================== */
     @PostMapping("/create")
     public Queue createQueue(@RequestBody QueueRequest request) {
-        return queueService.createOrGetTodayQueue(request.getShopId());
+
+        return queueService.createOrGetTodayQueue(
+                request.getShopId()
+        );
     }
 
+    /* ===============================
+       QUEUE STATUS (READ-ONLY)
+       =============================== */
     @GetMapping("/status/{shopId}")
     public Queue getQueueStatus(@PathVariable UUID shopId) {
-        return queueService.getActiveQueueByShopId(shopId); // ✅ FIXED
+
+        return queueService.getActiveQueueByShopId(shopId);
     }
 }
