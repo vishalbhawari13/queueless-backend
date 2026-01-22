@@ -8,85 +8,85 @@
 
     <style>
         :root {
-            --primary: #6366f1;
-            --secondary: #4f46e5;
-            --success: #22c55e;
-            --warning: #fbbf24;
-            --border: rgba(255,255,255,0.2);
+            --primary:#6366f1;
+            --secondary:#4f46e5;
+            --success:#22c55e;
+            --warning:#fbbf24;
+            --border:rgba(255,255,255,0.2);
         }
 
         * {
-            box-sizing: border-box;
-            font-family: "Inter", sans-serif;
+            box-sizing:border-box;
+            font-family:Inter,sans-serif;
         }
 
         body {
-            background: radial-gradient(circle at top, #6366f1, #0f172a 60%);
-            color: white;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 16px;
+            background:radial-gradient(circle at top,#6366f1,#0f172a 60%);
+            color:white;
+            min-height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            padding:16px;
         }
 
         .card {
-            max-width: 420px;
-            width: 100%;
-            padding: 26px;
-            border-radius: 22px;
-            backdrop-filter: blur(20px);
-            background: rgba(255,255,255,0.14);
-            border: 1px solid var(--border);
+            max-width:420px;
+            width:100%;
+            padding:26px;
+            border-radius:22px;
+            backdrop-filter:blur(20px);
+            background:rgba(255,255,255,0.14);
+            border:1px solid var(--border);
         }
 
         h2 {
-            text-align: center;
-            margin-bottom: 14px;
+            text-align:center;
+            margin-bottom:14px;
         }
 
         .live-box {
-            padding: 16px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 16px;
-            margin-bottom: 18px;
-            text-align: center;
-            line-height: 1.7;
+            padding:16px;
+            background:rgba(255,255,255,0.15);
+            border-radius:16px;
+            margin-bottom:18px;
+            text-align:center;
+            line-height:1.7;
         }
 
-        input, button {
-            width: 100%;
-            padding: 14px;
-            margin-bottom: 12px;
-            border-radius: 14px;
-            border: none;
+        input,button {
+            width:100%;
+            padding:14px;
+            margin-bottom:12px;
+            border-radius:14px;
+            border:none;
         }
 
         button {
-            background: linear-gradient(135deg, var(--secondary), var(--primary));
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
+            background:linear-gradient(135deg,var(--secondary),var(--primary));
+            color:white;
+            font-weight:600;
+            cursor:pointer;
         }
 
         button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+            opacity:0.6;
+            cursor:not-allowed;
         }
 
         .token-number {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--success);
-            margin-top: 10px;
+            font-size:2.4rem;
+            font-weight:800;
+            color:var(--success);
+            margin-top:10px;
         }
 
         .warning {
-            background: rgba(251,191,36,0.25);
-            padding: 10px;
-            border-radius: 12px;
-            margin-top: 10px;
-            font-size: 0.9rem;
+            background:rgba(251,191,36,0.25);
+            padding:10px;
+            border-radius:12px;
+            margin-top:10px;
+            font-size:0.9rem;
         }
     </style>
 </head>
@@ -110,61 +110,73 @@
     const API = "http://localhost:8080";
 
     /* ===============================
-       GET QUEUE ID FROM URL
-       /q/shop/{queueId}
+       GET shopId FROM URL
+       /q/shop/{shopId}
        =============================== */
-    function resolveQueueId() {
+    function getShopId() {
         const parts = window.location.pathname.split("/");
-        if (parts[1] === "q" && parts[2] === "shop") {
-            return parts[3];
-        }
-        return null;
+        return (parts[1] === "q" && parts[2] === "shop") ? parts[3] : null;
     }
 
-    const queueId = resolveQueueId();
+    const shopId = getShopId();
 
     const shopNameEl = document.getElementById("shopName");
     const liveInfoEl = document.getElementById("liveInfo");
     const joinBtn = document.getElementById("joinBtn");
 
-    let myToken = localStorage.getItem(`token_${queueId}`);
+    let queueId = null;
+    let myToken = null;
 
-    if (!queueId) {
-        liveInfoEl.innerText = "❌ Invalid queue link";
+    if (!shopId) {
+        liveInfoEl.innerText = "❌ Invalid shop link";
         joinBtn.disabled = true;
-        throw new Error("queueId missing");
+        throw new Error("shopId missing");
     }
 
     /* ===============================
-       LOAD QUEUE STATUS
+       LOAD QUEUE (SHOP → QUEUE)
        =============================== */
     async function loadQueue() {
         try {
-            const res = await fetch(
+            /* STEP 1: resolve active queue using shopId */
+            const shopRes = await fetch(`${API}/api/public/shop/${shopId}`);
+            if (!shopRes.ok) throw new Error("Queue unavailable");
+
+            const shopData = await shopRes.json();
+
+            if (!shopData.queueOpen) {
+                throw new Error("Queue closed");
+            }
+
+            queueId = shopData.queueId;
+            shopNameEl.innerText = shopData.shopName;
+
+            myToken = localStorage.getItem(`token_${queueId}`);
+
+            /* STEP 2: load live queue using queueId */
+            const queueRes = await fetch(
                 `${API}/api/public/queue/${queueId}` +
                 (myToken ? `?yourToken=${myToken}` : "")
             );
-            if (!res.ok) throw new Error();
+            if (!queueRes.ok) throw new Error("Queue unavailable");
 
-            const data = await res.json();
-
-            shopNameEl.innerText = data.shopName;
+            const q = await queueRes.json();
 
             let html = `
-                🔔 Now Serving: <b>${data.currentToken}</b><br>
-                👥 People Ahead: <b>${data.peopleAhead}</b><br>
-                ⏱ Est. Wait: <b>${data.estimatedWaitMinutes} min</b>
+                🔔 Now Serving: <b>${q.currentToken}</b><br>
+                👥 People Ahead: <b>${q.peopleAhead}</b><br>
+                ⏱ Est. Wait: <b>${q.estimatedWaitMinutes} min</b>
             `;
 
-            if (!data.queueOpen) {
+            if (!q.queueOpen) {
                 html += `<div class="warning">🚫 Queue is closed</div>`;
                 joinBtn.disabled = true;
             }
 
-            if (data.yourToken !== null) {
+            if (q.yourToken !== null) {
                 html += `
                     <div class="token-number">
-                        Your Token: ${data.yourToken}
+                        Your Token: ${q.yourToken}
                     </div>
                 `;
                 joinBtn.disabled = true;
@@ -179,7 +191,7 @@
     }
 
     /* ===============================
-       JOIN QUEUE (WITH LOCATION)
+       JOIN QUEUE
        =============================== */
     function joinQueue() {
         const name = document.getElementById("name").value.trim();
@@ -194,7 +206,7 @@
         joinBtn.innerText = "Joining…";
 
         navigator.geolocation.getCurrentPosition(
-            async position => {
+            async pos => {
                 try {
                     const res = await fetch(`${API}/api/token/create`, {
                         method: "POST",
@@ -203,17 +215,15 @@
                             queueId,
                             customerName: name,
                             phone,
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude
+                            latitude: pos.coords.latitude,
+                            longitude: pos.coords.longitude
                         })
                     });
 
                     if (!res.ok) throw new Error();
 
                     const token = await res.json();
-
-                    myToken = token.tokenNumber;
-                    localStorage.setItem(`token_${queueId}`, myToken);
+                    localStorage.setItem(`token_${queueId}`, token.tokenNumber);
 
                     joinBtn.innerText = "Joined";
                     loadQueue();
@@ -225,7 +235,7 @@
                 }
             },
             () => {
-                alert("📍 Location permission is required to join the queue");
+                alert("📍 Location permission required");
                 joinBtn.disabled = false;
                 joinBtn.innerText = "Join Queue";
             }
@@ -235,7 +245,7 @@
     joinBtn.onclick = joinQueue;
 
     loadQueue();
-    setInterval(loadQueue, 5000); // refresh every 5 seconds
+    setInterval(loadQueue, 5000);
 </script>
 
 </body>

@@ -56,6 +56,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/q/**",
                                 "/queue.html",
+                                "/billing.html",
+                                "/dashboard.html",
                                 "/api/public/**",
                                 "/api/token/create",
                                 "/api/auth/**"
@@ -64,7 +66,7 @@ public class SecurityConfig {
                         /* =========================================
                            🔐 LOGGED-IN USER
                            ========================================= */
-                        .requestMatchers("/api/shop/register")
+                        .requestMatchers("/api/shop/register","/api/context/me")
                         .authenticated()
 
                         /* =========================================
