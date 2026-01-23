@@ -12,7 +12,10 @@ import com.queueless.repository.TokenRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
+@Transactional // ✅ ONE transaction boundary for whole service
 public class AdminQueueService {
 
     private final QueueRepository queueRepository;
@@ -26,7 +29,9 @@ public class AdminQueueService {
         this.tokenRepository = tokenRepository;
     }
 
-    @Transactional
+    /* ===============================
+       CALL NEXT TOKEN
+       =============================== */
     public Token callNext(Queue queue, User admin) {
 
         validateOwnership(queue, admin);
@@ -54,15 +59,21 @@ public class AdminQueueService {
         return next;
     }
 
-    @Transactional
-    public Token completeToken(
-            Token token,
+    /* ===============================
+       COMPLETE TOKEN
+       =============================== */
+    public AdminTokenResponse completeToken(
+            UUID tokenId,
             User admin,
             int billAmount,
             String serviceType
     ) {
+        Token token = tokenRepository.findById(tokenId)
+                .orElseThrow(() -> new BusinessException("Token not found"));
 
-        validateOwnership(token.getQueue(), admin);
+        Queue queue = token.getQueue(); // safe (transaction open)
+
+        validateOwnership(queue, admin);
 
         if (token.getStatus() != TokenStatus.CALLED) {
             throw new BusinessException("Only CALLED token can be completed");
@@ -71,16 +82,23 @@ public class AdminQueueService {
         token.setStatus(TokenStatus.COMPLETED);
         token.setBillAmount(billAmount);
         token.setServiceType(serviceType);
+
         tokenRepository.save(token);
 
-        autoCallNext(token.getQueue());
-        return token;
+        autoCallNext(queue);
+
+        return toAdminResponse(token); // ✅ DTO created INSIDE transaction
     }
 
-    @Transactional
+
+    /* ===============================
+       SKIP TOKEN
+       =============================== */
     public Token skipToken(Token token, User admin) {
 
-        validateOwnership(token.getQueue(), admin);
+        Queue queue = token.getQueue();
+
+        validateOwnership(queue, admin);
 
         if (token.getStatus() != TokenStatus.CALLED) {
             throw new BusinessException("Only CALLED token can be skipped");
@@ -89,37 +107,48 @@ public class AdminQueueService {
         token.setStatus(TokenStatus.SKIPPED);
         tokenRepository.save(token);
 
-        autoCallNext(token.getQueue());
+        autoCallNext(queue);
         return token;
     }
 
-    @Transactional
+    /* ===============================
+       CLOSE QUEUE
+       =============================== */
     public void closeQueue(Queue queue, User admin) {
 
         validateOwnership(queue, admin);
+
         queue.setStatus(QueueStatus.CLOSED);
         queueRepository.save(queue);
     }
 
     /* ===============================
-       DTO MAPPER
+       DTO MAPPER (SAFE)
        =============================== */
     public AdminTokenResponse toAdminResponse(Token token) {
+
+        Queue queue = token.getQueue(); // ✅ still in transaction
+
         return AdminTokenResponse.builder()
                 .tokenId(token.getId())
                 .tokenNumber(token.getTokenNumber())
                 .status(token.getStatus().name())
                 .customerName(token.getCustomerName())
                 .phone(token.getPhone())
-                .queueId(token.getQueue().getId())
-                .currentToken(token.getQueue().getCurrentToken())
+                .queueId(queue.getId())
+                .currentToken(queue.getCurrentToken())
                 .build();
     }
 
     /* ===============================
-       INTERNAL
+       INTERNAL HELPERS
        =============================== */
+
     private void autoCallNext(Queue queue) {
+
+        if (queue.getStatus() != QueueStatus.OPEN) {
+            return; // ❌ Do not auto-call if closed
+        }
 
         tokenRepository
                 .findByQueueAndStatusOrderByTokenNumberAsc(
@@ -138,6 +167,7 @@ public class AdminQueueService {
     }
 
     private void validateOwnership(Queue queue, User admin) {
+
         if (admin.getShop() == null ||
                 !queue.getShop().getId().equals(admin.getShop().getId())) {
             throw new BusinessException("Unauthorized action");

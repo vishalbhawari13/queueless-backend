@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pricing | Queueless</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Razorpay Checkout -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root{
+            --primary:#6366f1;
+            --success:#22c55e;
+            --bg:#0f172a;
+            --card:rgba(255,255,255,.14);
+            --border:rgba(255,255,255,.25);
+        }
+
+        *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,sans-serif;}
+
+        body{
+            background:radial-gradient(circle at top,#6366f1,#0f172a 65%);
+            color:white;
+            min-height:100vh;
+            padding:40px 20px;
+        }
+
+        .container{
+            max-width:1100px;
+            margin:auto;
+            text-align:center;
+        }
+
+        h1{font-size:2.4rem;margin-bottom:10px;}
+        .subtitle{opacity:.85;margin-bottom:40px;}
+
+        .pricing{
+            display:grid;
+            gap:28px;
+        }
+
+        @media(min-width:900px){
+            .pricing{grid-template-columns:repeat(3,1fr);}
+        }
+
+        .card{
+            background:var(--card);
+            border:1px solid var(--border);
+            backdrop-filter:blur(18px);
+            border-radius:26px;
+            padding:28px;
+            position:relative;
+        }
+
+        .featured{
+            border:2px solid var(--success);
+            transform:scale(1.03);
+        }
+
+        .badge{
+            position:absolute;
+            top:-14px;
+            left:50%;
+            transform:translateX(-50%);
+            background:var(--success);
+            color:#022c22;
+            padding:6px 14px;
+            border-radius:999px;
+            font-size:.8rem;
+            font-weight:700;
+        }
+
+        .price{
+            font-size:2.2rem;
+            margin:18px 0;
+        }
+
+        .price span{
+            font-size:1rem;
+            opacity:.7;
+        }
+
+        ul{
+            list-style:none;
+            text-align:left;
+            margin:22px 0;
+        }
+
+        ul li{
+            margin-bottom:10px;
+            opacity:.9;
+        }
+
+        button{
+            width:100%;
+            padding:14px;
+            border:none;
+            border-radius:14px;
+            background:linear-gradient(135deg,#6366f1,#4f46e5);
+            color:white;
+            font-weight:600;
+            cursor:pointer;
+        }
+
+        button.secondary{
+            background:rgba(255,255,255,.18);
+        }
+
+        footer{
+            margin-top:40px;
+            opacity:.7;
+            font-size:.85rem;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Simple, Transparent Pricing</h1>
+    <p class="subtitle">Choose the plan that fits your shop size and growth</p>
+
+    <div class="pricing">
+
+        <!-- FREE -->
+        <div class="card">
+            <h3>FREE</h3>
+            <div class="price">₹0 <span>/ month</span></div>
+            <ul>
+                <li>✔ Basic Queue Management</li>
+                <li>✔ QR Code for Shop</li>
+                <li>✔ Token Generation</li>
+                <li>❌ Analytics</li>
+                <li>❌ Revenue Tracking</li>
+            </ul>
+            <button class="secondary" onclick="goLogin()">Get Started</button>
+        </div>
+
+        <!-- PRO -->
+        <div class="card featured">
+            <div class="badge">Most Popular</div>
+            <h3>PRO</h3>
+            <div class="price">₹999 <span>/ month</span></div>
+            <ul>
+                <li>✔ Everything in FREE</li>
+                <li>✔ Daily Analytics</li>
+                <li>✔ Revenue Tracking</li>
+                <li>✔ Usage Warnings</li>
+                <li>✔ Email Support</li>
+            </ul>
+            <button onclick="pay('PRO')">Upgrade to PRO</button>
+        </div>
+
+        <!-- PRO MAX -->
+        <div class="card">
+            <h3>PRO MAX</h3>
+            <div class="price">₹1499 <span>/ month</span></div>
+            <ul>
+                <li>✔ Everything in PRO</li>
+                <li>✔ Advanced Analytics</li>
+                <li>✔ Priority Support</li>
+                <li>✔ SLA Support</li>
+            </ul>
+            <button onclick="pay('PRO_MAX')">Upgrade to PRO MAX</button>
+        </div>
+
+    </div>
+
+    <footer>
+        No hidden fees • Cancel anytime • Secure payments by Razorpay
+    </footer>
+
+</div>
+
+<script>
+    const API = "http://localhost:8080";
+    const jwt = localStorage.getItem("jwt");
+
+    function goLogin(){
+        location.href = "/login.html";
+    }
+
+    async function pay(plan){
+
+        if(!jwt){
+            alert("Please login first");
+            goLogin();
+            return;
+        }
+
+        // 1️⃣ Create order from backend
+        const res = await fetch(
+            `${API}/api/admin/payment/create-order?plan=${plan}`,
+            {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + jwt
+                }
+            }
+        );
+
+        if(!res.ok){
+            alert(await res.text());
+            return;
+        }
+
+        const data = await res.json();
+
+        // 2️⃣ FULL Razorpay Checkout (ALL METHODS)
+        const options = {
+            key: data.key,
+            amount: data.amount,
+            currency: data.currency,
+            order_id: data.orderId,
+
+            name: "Queueless",
+            description: `${plan} Subscription`,
+
+            method: {
+                upi: true,
+                card: true,
+                netbanking: true,
+                wallet: true,
+                paylater: true
+            },
+
+            upi: {
+                flow: "collect" // enables UPI apps + QR
+            },
+
+            theme: {
+                color: "#6366f1"
+            },
+
+            handler: function () {
+                alert("Payment successful! Subscription activating…");
+                location.href = "/dashboard.html";
+            }
+        };
+
+        new Razorpay(options).open();
+    }
+</script>
+
+</body>
+</html>

@@ -56,6 +56,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/q/**",
                                 "/queue.html",
+                                "/login.html",
+                                "/pricing.html",
                                 "/billing.html",
                                 "/dashboard.html",
                                 "/api/public/**",

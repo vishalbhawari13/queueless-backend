@@ -60,22 +60,16 @@ public class AdminQueueController {
             @PathVariable UUID tokenId,
             @RequestBody CompleteTokenRequest request
     ) {
-
         User admin = getAuthenticatedAdmin();
 
-        Token token = tokenRepository.findById(tokenId)
-                .orElseThrow(() -> new BusinessException("Token not found"));
-
-        Token completed =
-                adminQueueService.completeToken(
-                        token,
-                        admin,
-                        request.getBillAmount(),
-                        request.getServiceType()
-                );
-
-        return adminQueueService.toAdminResponse(completed);
+        return adminQueueService.completeToken(
+                tokenId,
+                admin,
+                request.getBillAmount(),
+                request.getServiceType()
+        );
     }
+
 
     /* ===============================
        SKIP TOKEN

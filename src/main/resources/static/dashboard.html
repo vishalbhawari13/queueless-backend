@@ -1,199 +1,370 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard | Queueless</title>
+    <title>Admin Dashboard | Queueless</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        :root {
-            --primary: #6366f1;
-            --secondary: #4f46e5;
-            --bg: #0f172a;
-            --glass: rgba(255,255,255,0.14);
-            --border: rgba(255,255,255,0.2);
-            --warning: #f59e0b;
+        :root{
+            --primary:#6366f1;
+            --success:#22c55e;
+            --warning:#f59e0b;
+            --danger:#ef4444;
+
+            --bg:#0f172a;
+            --card:rgba(255,255,255,.14);
+            --border:rgba(255,255,255,.25);
+            --text:#ffffff;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: "Inter", sans-serif;
+        [data-theme="light"]{
+            --bg:#f8fafc;
+            --card:#ffffff;
+            --border:#e5e7eb;
+            --text:#111827;
         }
 
-        body {
-            background: radial-gradient(circle at top, #6366f1, #0f172a 60%);
-            min-height: 100vh;
-            padding: 24px 16px;
-            color: white;
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:Inter,sans-serif;
         }
 
-        .container {
-            max-width: 1100px;
-            margin: auto;
+        body{
+            background:var(--bg);
+            color:var(--text);
+            display:flex;
+            min-height:100vh;
         }
 
-        header {
-            margin-bottom: 30px;
+        /* SIDEBAR */
+        .sidebar{
+            width:260px;
+            background:var(--card);
+            backdrop-filter:blur(18px);
+            border-right:1px solid var(--border);
+            padding:24px;
         }
 
-        header h2 {
-            font-size: 1.8rem;
-            font-weight: 700;
+        .sidebar h2{margin-bottom:28px}
+
+        .nav a{
+            display:block;
+            padding:12px 16px;
+            border-radius:14px;
+            margin-bottom:10px;
+            text-decoration:none;
+            color:inherit;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
+        .nav a.active,
+        .nav a:hover{
+            background:rgba(99,102,241,.2);
         }
 
-        @media (min-width: 768px) {
-            .grid {
-                grid-template-columns: 2fr 1fr;
-            }
+        /* MAIN */
+        .main{flex:1;padding:24px}
+
+        /* HEADER */
+        .header{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:24px;
         }
 
-        .card {
-            background: linear-gradient(
-                180deg,
-                rgba(255,255,255,0.16),
-                rgba(255,255,255,0.08)
-            );
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: 22px;
-            padding: 24px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
-            animation: fadeUp 0.6s ease;
+        .toggle{
+            cursor:pointer;
+            padding:8px 14px;
+            border-radius:999px;
+            border:1px solid var(--border);
         }
 
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(25px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* KPI */
+        .kpis{
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+            gap:18px;
+            margin-bottom:24px;
         }
 
-        .card h3 {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 14px;
+        .card{
+            background:var(--card);
+            border:1px solid var(--border);
+            backdrop-filter:blur(16px);
+            border-radius:22px;
+            padding:22px;
         }
 
-        .chart-container {
-            position: relative;
-            height: 300px;
+        .grid{
+            display:grid;
+            gap:24px;
         }
 
-        .warning {
-            display: none;
-            background: rgba(245,158,11,0.15);
-            border: 1px solid rgba(245,158,11,0.4);
-            border-radius: 16px;
-            padding: 18px;
-            font-size: 0.95rem;
-            line-height: 1.4;
+        @media(min-width:1000px){
+            .grid{grid-template-columns:2fr 1fr;}
+        }
+
+        .progress{
+            background:rgba(255,255,255,.2);
+            height:12px;
+            border-radius:999px;
+            overflow:hidden;
+            margin-top:8px;
+        }
+        .progress span{
+            display:block;
+            height:100%;
+            background:linear-gradient(90deg,var(--primary),var(--success));
+        }
+
+        .health{
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+            gap:12px;
+        }
+
+        .status{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            font-weight:600;
+        }
+
+        .dot{
+            width:10px;
+            height:10px;
+            border-radius:50%;
+            background:var(--success);
+            animation:pulse 1.5s infinite;
+        }
+
+        @keyframes pulse{
+            0%{opacity:.5}
+            50%{opacity:1}
+            100%{opacity:.5}
+        }
+
+        .feed{
+            max-height:280px;
+            overflow:auto;
+        }
+
+        .feed-item{
+            padding:12px 0;
+            border-bottom:1px solid var(--border);
+            font-size:.9rem;
+        }
+
+        .alert{
+            padding:14px;
+            border-radius:14px;
+            margin-bottom:10px;
+        }
+
+        .alert.warn{background:rgba(245,158,11,.2)}
+        .alert.danger{background:rgba(239,68,68,.2)}
+
+        @media(max-width:768px){
+            .sidebar{display:none}
         }
     </style>
 </head>
 
 <body>
 
-<div class="container">
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <h2>🚀 Queueless</h2>
+    <div class="nav">
+        <a class="active">Dashboard</a>
+        <a href="/customers.html">Customers</a>
+        <a href="/analytics.html">Analytics</a>
+        <a href="/billing.html">Billing</a>
+        <a href="/settings.html">Settings</a>
+    </div>
+</div>
 
-    <header>
-        <h2>📊 Dashboard</h2>
-    </header>
+<!-- MAIN -->
+<div class="main">
 
-    <section class="grid">
+    <div class="header">
+        <h2>📊 Admin Dashboard</h2>
+        <div class="toggle" onclick="toggleTheme()">🌗 Theme</div>
+    </div>
 
-        <!-- Chart -->
+    <div class="kpis">
         <div class="card">
-            <h3>Monthly Tokens Served</h3>
-            <div class="chart-container">
-                <canvas id="chart"></canvas>
+            <small>Tokens Today</small>
+            <h2 id="tokens">—</h2>
+        </div>
+        <div class="card">
+            <small>Revenue</small>
+            <h2 id="revenue">—</h2>
+        </div>
+        <div class="card">
+            <small>Avg Bill</small>
+            <h2 id="avgBill">—</h2>
+        </div>
+        <div class="card">
+            <small>System Status</small>
+            <h2 style="color:var(--success)">Operational</h2>
+        </div>
+    </div>
+
+    <div class="grid">
+
+        <div class="card">
+            <h3>Usage Analytics</h3>
+            <select onchange="loadChart(this.value)">
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+            </select>
+            <canvas id="chart" height="140"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>Plan Usage</h3>
+            <p>Plan: <b id="planName">—</b></p>
+            <p>Tokens Used: <b id="used">—</b></p>
+            <div class="progress">
+                <span id="bar"></span>
+            </div>
+
+            <hr style="margin:18px 0;border-color:var(--border)">
+
+            <h3>System Health</h3>
+            <div class="health">
+                <div class="status"><span class="dot"></span> API</div>
+                <div class="status"><span class="dot"></span> Database</div>
+                <div class="status"><span class="dot"></span> Payments</div>
             </div>
         </div>
 
-        <!-- Usage Warning -->
+    </div>
+
+    <div class="grid" style="margin-top:24px">
+
         <div class="card">
-            <h3>Daily Usage</h3>
-            <div id="warning" class="warning"></div>
+            <h3>⚡ Live Activity</h3>
+            <div class="feed" id="feed"></div>
         </div>
 
-    </section>
+        <div class="card">
+            <h3>🚨 Alerts</h3>
+            <div class="alert warn">⚠ Token usage nearing daily limit</div>
+            <div class="alert danger">❌ Last payment retry failed</div>
+        </div>
+
+    </div>
 
 </div>
 
 <script>
+    const API = "http://localhost:8080";
     const jwt = localStorage.getItem("jwt");
 
-    async function loadChart() {
-        const res = await fetch("/api/admin/analytics/monthly", {
-            headers: { Authorization: "Bearer " + jwt }
+    if (!jwt) location.href = "/login.html";
+
+    /* THEME */
+    function toggleTheme(){
+        const theme = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem("theme", theme);
+    }
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+
+    /* 🔒 SUBSCRIPTION GATE */
+    async function checkPlanAccess(){
+        const res = await fetch(`${API}/api/admin/payments/current-subscription`, {
+            headers:{ Authorization:"Bearer " + jwt }
         });
-        if (!res.ok) return;
+
+        if(!res.ok){
+            location.href="/billing.html";
+            return;
+        }
+
+        const sub = await res.json();
+        const plan = sub.plan;
+
+        if(plan !== "PRO" && plan !== "PRO_MAX"){
+            location.href="/billing.html";
+            return;
+        }
+
+        planName.innerText = plan;
+    }
+
+    /* DASHBOARD KPIs */
+    async function loadDashboard(){
+        const res = await fetch(`${API}/api/admin/analytics/today`, {
+            headers:{ Authorization:"Bearer " + jwt }
+        });
 
         const data = await res.json();
 
-        new Chart(document.getElementById("chart"), {
-            type: "line",
-            data: {
-                labels: data.dailyCounts.map((_, i) => i + 1),
-                datasets: [{
-                    label: "Tokens Served",
-                    data: data.dailyCounts,
-                    borderColor: "#6366f1",
-                    backgroundColor: "rgba(99,102,241,0.15)",
-                    tension: 0.35,
-                    fill: true,
-                    pointRadius: 4,
-                    pointBackgroundColor: "#6366f1"
+        tokens.innerText = data.totalTokensCompleted;
+        revenue.innerText = "₹" + data.totalRevenue;
+        avgBill.innerText = "₹" + data.averageBill;
+
+        used.innerText = `${data.totalTokensCompleted} / ${data.planLimit}`;
+        bar.style.width = Math.min(100, (data.totalTokensCompleted / data.planLimit) * 100) + "%";
+    }
+
+    /* CHART */
+    let chart;
+    function loadChart(type){
+        const labels = type==="week"
+            ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+            : Array.from({length:30},(_,i)=>i+1);
+
+        const values = labels.map(()=>Math.floor(Math.random()*50)+10);
+
+        if(chart) chart.destroy();
+        chart = new Chart(document.getElementById("chart"),{
+            type:"line",
+            data:{
+                labels,
+                datasets:[{
+                    data:values,
+                    borderColor:"#6366f1",
+                    backgroundColor:"rgba(99,102,241,.15)",
+                    fill:true,
+                    tension:.4
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: { color: "white" }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: { color: "white" },
-                        grid: { color: "rgba(255,255,255,0.1)" }
-                    },
-                    y: {
-                        ticks: { color: "white" },
-                        grid: { color: "rgba(255,255,255,0.1)" }
-                    }
-                }
-            }
+            options:{ plugins:{ legend:{display:false} } }
         });
     }
 
-    async function loadWarning() {
-        const res = await fetch("/api/admin/usage/warning", {
-            headers: { Authorization: "Bearer " + jwt }
+    /* ACTIVITY */
+    function loadFeed(){
+        const events=[
+            "New shop registered",
+            "Payment captured successfully",
+            "Queue completed in 3m 10s",
+            "Token served",
+            "Customer joined queue"
+        ];
+        feed.innerHTML="";
+        events.forEach(e=>{
+            feed.innerHTML+=`<div class="feed-item">• ${e}</div>`;
         });
-
-        if (!res.ok) return;
-
-        const d = await res.json();
-        if (d.warning) {
-            const w = document.getElementById("warning");
-            w.style.display = "block";
-            w.innerText =
-              `⚠ ${d.used}/${d.limit} tokens used today (${d.percent}%)`;
-        }
     }
 
-    loadChart();
-    loadWarning();
+    /* INIT */
+    (async()=>{
+        await checkPlanAccess();   // 🔒 HARD GATE
+        await loadDashboard();
+        loadChart("week");
+        loadFeed();
+    })();
 </script>
 
 </body>

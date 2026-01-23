@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login | Queueless</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root{
+            --primary:#6366f1;
+            --bg:#0f172a;
+            --glass:rgba(255,255,255,0.14);
+            --border:rgba(255,255,255,0.25);
+            --error:#ef4444;
+        }
+
+        *{
+            box-sizing:border-box;
+            font-family:Inter,sans-serif;
+        }
+
+        body{
+            min-height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            background:radial-gradient(circle at top,var(--primary),var(--bg) 65%);
+            color:#fff;
+        }
+
+        .card{
+            width:100%;
+            max-width:420px;
+            padding:28px;
+            border-radius:22px;
+            background:var(--glass);
+            border:1px solid var(--border);
+            backdrop-filter:blur(20px);
+            animation:fadeUp .6s ease;
+        }
+
+        @keyframes fadeUp{
+            from{opacity:0;transform:translateY(25px)}
+            to{opacity:1;transform:translateY(0)}
+        }
+
+        h2{
+            text-align:center;
+            margin-bottom:20px;
+        }
+
+        input,button{
+            width:100%;
+            padding:14px;
+            margin-bottom:14px;
+            border-radius:14px;
+            border:none;
+        }
+
+        input{
+            outline:none;
+        }
+
+        button{
+            background:linear-gradient(135deg,#4f46e5,#6366f1);
+            color:#fff;
+            font-weight:600;
+            cursor:pointer;
+        }
+
+        button:disabled{
+            opacity:.6;
+            cursor:not-allowed;
+        }
+
+        .error{
+            display:none;
+            background:rgba(239,68,68,.2);
+            border:1px solid rgba(239,68,68,.45);
+            padding:12px;
+            border-radius:12px;
+            margin-bottom:14px;
+            font-size:.9rem;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="card">
+    <h2>🔐 Login to Queueless</h2>
+
+    <div id="error" class="error"></div>
+
+    <input id="email" type="email" placeholder="Email" autocomplete="username">
+    <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+
+    <button id="loginBtn">Login</button>
+</div>
+
+<script>
+    const API = "http://localhost:8080";
+    const btn = document.getElementById("loginBtn");
+    const errorBox = document.getElementById("error");
+
+    /* LOGIN */
+    btn.onclick = async () => {
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        if(!email || !password){
+            showError("Email and password are required");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "Logging in…";
+        errorBox.style.display = "none";
+
+        try{
+            /* AUTH */
+            const res = await fetch(`${API}/api/auth/login`,{
+                method:"POST",
+                headers:{ "Content-Type":"application/json" },
+                body:JSON.stringify({ email, password })
+            });
+
+            if(!res.ok){
+                const msg = await res.text();
+                throw new Error(msg || "Invalid credentials");
+            }
+
+            const token = await res.text();
+            localStorage.setItem("jwt", token);
+
+            /* CHECK SUBSCRIPTION */
+            await redirectBasedOnPlan(token);
+
+        }catch(err){
+            showError(err.message);
+            btn.disabled = false;
+            btn.innerText = "Login";
+        }
+    };
+
+    /* PLAN REDIRECT */
+    async function redirectBasedOnPlan(jwt){
+        const res = await fetch(`${API}/api/admin/payments/current-subscription`,{
+            headers:{ Authorization:"Bearer "+jwt }
+        });
+
+        if(!res.ok){
+            location.href = "/billing.html";
+            return;
+        }
+
+        const sub = await res.json();
+        const plan = sub.plan;
+
+        if(plan === "PRO" || plan === "PRO_MAX"){
+            location.href = "/dashboard.html";
+        }else{
+            location.href = "/billing.html";
+        }
+    }
+
+    /* ERROR */
+    function showError(msg){
+        errorBox.style.display = "block";
+        errorBox.innerText = "❌ " + msg;
+    }
+</script>
+
+</body>
+</html>
