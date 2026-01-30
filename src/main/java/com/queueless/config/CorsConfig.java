@@ -16,10 +16,8 @@ public class CorsConfig {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // ✅ Allow all Vite ports
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:*"
-        ));
+        // Allow ALL origins (frontend, Postman, mobile, etc.)
+        config.setAllowedOriginPatterns(List.of("*"));
 
         config.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "DELETE", "OPTIONS"
