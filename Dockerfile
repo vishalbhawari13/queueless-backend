@@ -24,5 +24,5 @@ RUN ./mvnw clean package -DskipTests
 # Expose port
 EXPOSE 8080
 
-# Run the jar
-CMD ["java", "-jar", "target/*.jar"]
+# Run the jar (use exact jar name)
+CMD ["java", "-jar", "target/queueless-backend-0.0.1-SNAPSHOT.jar"]
