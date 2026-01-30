@@ -3,6 +3,7 @@ package com.queueless.config;
 import com.queueless.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -21,26 +22,24 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                /* ===============================
-                   ❌ CSRF (Not needed for JWT)
-                   =============================== */
+                /* 🌐 ENABLE CORS */
+                .cors(cors -> {})
+
+                /* ❌ CSRF */
                 .csrf(csrf -> csrf.disable())
 
-                /* ===============================
-                   🚫 Stateless session (JWT)
-                   =============================== */
+                /* 🚫 STATELESS JWT */
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
-                /* ===============================
-                   🔐 Authorization rules
-                   =============================== */
+                /* 🔐 AUTH RULES */
                 .authorizeHttpRequests(auth -> auth
 
-                        /* =========================================
-                           🔓 STATIC FILES (IMPORTANT FIX)
-                           ========================================= */
+                        /* ✅ ALLOW PREFLIGHT REQUESTS */
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        /* 🔓 STATIC */
                         .requestMatchers(
                                 "/payment.html",
                                 "/static/**",
@@ -50,9 +49,7 @@ public class SecurityConfig {
                                 "/favicon.ico"
                         ).permitAll()
 
-                        /* =========================================
-                           🔓 PUBLIC – CUSTOMER / AUTH / QR
-                           ========================================= */
+                        /* 🔓 PUBLIC */
                         .requestMatchers(
                                 "/q/**",
                                 "/queue.html",
@@ -65,35 +62,26 @@ public class SecurityConfig {
                                 "/api/auth/**"
                         ).permitAll()
 
-                        /* =========================================
-                           🔐 LOGGED-IN USER
-                           ========================================= */
-                        .requestMatchers("/api/shop/register","/api/context/me")
-                        .authenticated()
+                        /* 🔐 AUTHENTICATED USER */
+                        .requestMatchers(
+                                "/api/shop/register",
+                                "/api/context/me"
+                        ).authenticated()
 
-                        /* =========================================
-                           🔐 ADMIN ONLY
-                           ========================================= */
+                        /* 🔐 ADMIN ONLY */
                         .requestMatchers(
                                 "/api/admin/**",
                                 "/api/queue/**"
                         ).hasAuthority("ROLE_ADMIN")
 
-                        /* =========================================
-                           🔓 WEBHOOKS
-                           ========================================= */
-                        .requestMatchers("/api/webhook/**")
-                        .permitAll()
+                        /* 🔓 WEBHOOK */
+                        .requestMatchers("/api/webhook/**").permitAll()
 
-                        /* =========================================
-                           ❌ BLOCK EVERYTHING ELSE
-                           ========================================= */
+                        /* ❌ BLOCK EVERYTHING ELSE */
                         .anyRequest().denyAll()
                 )
 
-                /* ===============================
-                   🔑 JWT FILTER
-                   =============================== */
+                /* 🔑 JWT FILTER */
                 .addFilterBefore(
                         jwtFilter,
                         UsernamePasswordAuthenticationFilter.class

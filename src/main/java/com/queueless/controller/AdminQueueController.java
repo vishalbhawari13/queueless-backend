@@ -1,5 +1,6 @@
 package com.queueless.controller;
 
+import com.queueless.dto.AdminLiveQueueResponse;
 import com.queueless.dto.AdminTokenResponse;
 import com.queueless.dto.CompleteTokenRequest;
 import com.queueless.entity.Queue;
@@ -31,6 +32,19 @@ public class AdminQueueController {
         this.adminQueueService = adminQueueService;
         this.queueService = queueService;
         this.tokenRepository = tokenRepository;
+    }
+
+    @GetMapping("/live")
+    public AdminLiveQueueResponse live() {
+
+        User admin = getAuthenticatedAdmin();
+
+        Queue queue =
+                queueService.getActiveQueueByShopId(
+                        admin.getShop().getId()
+                );
+
+        return adminQueueService.getLiveQueue(queue);
     }
 
     /* ===============================

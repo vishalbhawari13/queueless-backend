@@ -6,8 +6,8 @@ import com.queueless.entity.enums.QueueStatus;
 import com.queueless.exception.BusinessException;
 import com.queueless.repository.QueueRepository;
 import com.queueless.repository.ShopRepository;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -27,7 +27,7 @@ public class QueueService {
     }
 
     /* ===============================
-       PUBLIC – READ ONLY
+       PUBLIC – READ ONLY (STRICT)
        =============================== */
     @Transactional(readOnly = true)
     public Queue getQueueById(UUID queueId) {
@@ -36,7 +36,7 @@ public class QueueService {
     }
 
     /* ===============================
-       ADMIN – READ ONLY
+       ADMIN – READ ONLY (STRICT)
        =============================== */
     @Transactional(readOnly = true)
     public Queue getActiveQueueByShopId(UUID shopId) {
@@ -49,6 +49,21 @@ public class QueueService {
                 .filter(q -> q.getStatus() == QueueStatus.OPEN)
                 .orElseThrow(() ->
                         new BusinessException("No active queue for today"));
+    }
+
+    /* ===============================
+       CONTEXT / DASHBOARD – SAFE READ
+       =============================== */
+    @Transactional(readOnly = true)
+    public Queue getActiveQueueIfExists(UUID shopId) {
+
+        return shopRepository.findById(shopId)
+                .flatMap(shop ->
+                        queueRepository
+                                .findByShopAndQueueDate(shop, LocalDate.now())
+                                .filter(q -> q.getStatus() == QueueStatus.OPEN)
+                )
+                .orElse(null);
     }
 
     /* ===============================

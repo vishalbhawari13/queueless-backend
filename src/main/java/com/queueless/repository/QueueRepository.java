@@ -21,16 +21,26 @@ public interface QueueRepository extends JpaRepository<Queue, UUID> {
        =============================== */
 
     @Transactional(readOnly = true)
-    Optional<Queue> findById(UUID id);
-
-    @Transactional(readOnly = true)
     Optional<Queue> findByShopAndQueueDate(
             Shop shop,
             LocalDate queueDate
     );
 
+    @Transactional(readOnly = true)
+    @Query("""
+        SELECT q FROM Queue q
+        WHERE q.shop.id = :shopId
+          AND q.queueDate = :date
+          AND q.status = 'OPEN'
+    """)
+    Optional<Queue> findActiveQueueForShop(
+            @Param("shopId") UUID shopId,
+            @Param("date") LocalDate date
+    );
+
+
     /* ===============================
-       WRITE / ADMIN METHODS (LOCKED)
+       WRITE / LOCKED METHODS (PESSIMISTIC)
        =============================== */
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -48,5 +58,17 @@ public interface QueueRepository extends JpaRepository<Queue, UUID> {
     Optional<Queue> findByShopIdAndStatusForUpdate(
             @Param("shopId") UUID shopId,
             @Param("status") QueueStatus status
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT q FROM Queue q
+        WHERE q.shop.id = :shopId
+          AND q.queueDate = :date
+          AND q.status = 'OPEN'
+    """)
+    Optional<Queue> findActiveQueueForShopForUpdate(
+            @Param("shopId") UUID shopId,
+            @Param("date") LocalDate date
     );
 }

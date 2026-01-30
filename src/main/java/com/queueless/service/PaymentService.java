@@ -118,6 +118,32 @@ public class PaymentService {
                 .getJSONObject("entity");
 
         String orderId = entity.getString("order_id");
+        String paymentId = entity.getString("id");
+
+        if ("payment.captured".equals(event)) {
+            handlePaymentSuccess(orderId, paymentId);
+        }
+
+        if ("payment.failed".equals(event)) {
+            Payment payment = paymentRepository
+                    .findByRazorpayOrderId(orderId)
+                    .orElseThrow(() ->
+                            new BusinessException("Payment not found")
+                    );
+
+            payment.setStatus(PaymentStatus.FAILED);
+            paymentRepository.save(payment);
+        }
+    }
+
+    /* ===============================
+       PUBLIC SUCCESS METHOD
+       (Used by controller / tests)
+       =============================== */
+    public void handlePaymentSuccess(
+            String orderId,
+            String paymentId
+    ) {
 
         Payment payment = paymentRepository
                 .findByRazorpayOrderId(orderId)
@@ -125,21 +151,11 @@ public class PaymentService {
                         new BusinessException("Payment not found")
                 );
 
-        if ("payment.captured".equals(event)) {
-            handleSuccess(
-                    payment,
-                    entity.getString("id")
-            );
-        }
-
-        if ("payment.failed".equals(event)) {
-            payment.setStatus(PaymentStatus.FAILED);
-            paymentRepository.save(payment);
-        }
+        handleSuccess(payment, paymentId);
     }
 
     /* ===============================
-       SUCCESS FLOW
+       INTERNAL SUCCESS FLOW
        =============================== */
     private void handleSuccess(
             Payment payment,

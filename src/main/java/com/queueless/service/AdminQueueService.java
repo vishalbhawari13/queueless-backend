@@ -1,5 +1,6 @@
 package com.queueless.service;
 
+import com.queueless.dto.AdminLiveQueueResponse;
 import com.queueless.dto.AdminTokenResponse;
 import com.queueless.entity.Queue;
 import com.queueless.entity.Token;
@@ -172,5 +173,38 @@ public class AdminQueueService {
                 !queue.getShop().getId().equals(admin.getShop().getId())) {
             throw new BusinessException("Unauthorized action");
         }
+    }
+
+    public AdminLiveQueueResponse getLiveQueue(Queue queue) {
+
+        // current = CALLED token
+        Token current =
+                tokenRepository
+                        .findFirstByQueueAndStatusOrderByTokenNumberAsc(
+                                queue,
+                                TokenStatus.CALLED
+                        )
+                        .orElse(null);
+
+        // next = WAITING token
+        Token next =
+                tokenRepository
+                        .findFirstByQueueAndStatusOrderByTokenNumberAsc(
+                                queue,
+                                TokenStatus.WAITING
+                        )
+                        .orElse(null);
+
+        long waitingCount =
+                tokenRepository.countByQueueAndStatus(
+                        queue,
+                        TokenStatus.WAITING
+                );
+
+        return new AdminLiveQueueResponse(
+                current != null ? toAdminResponse(current) : null,
+                next != null ? toAdminResponse(next) : null,
+                waitingCount
+        );
     }
 }

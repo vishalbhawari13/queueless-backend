@@ -28,6 +28,12 @@ public interface TokenRepository extends JpaRepository<Token, UUID> {
             int tokenNumber
     );
 
+    Optional<Token> findFirstByQueueAndStatusOrderByTokenNumberAsc(
+            Queue queue,
+            TokenStatus status
+    );
+    long countByQueueAndStatus(Queue queue, TokenStatus status);
+
     Optional<Token> findFirstByQueueAndStatusOrderByTokenNumberDesc(
             Queue queue,
             TokenStatus status
