@@ -51,7 +51,7 @@ public class EmailService {
         """.formatted(plan, shop.getName(), start, end);
 
         sendEmail(
-                shop.getEmail(),
+                shop.getName(),
                 "Queueless Subscription Activated",
                 html
         );
@@ -72,7 +72,7 @@ public class EmailService {
         """.formatted(oldPlan);
 
         sendEmail(
-                shop.getEmail(),
+                shop.getName(),
                 "Queueless Subscription Expired",
                 html
         );
