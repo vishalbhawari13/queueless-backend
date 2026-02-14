@@ -39,6 +39,9 @@ public class SecurityConfig {
                         /* ✅ ALLOW PREFLIGHT REQUESTS */
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                        /* 🔓 HOME */
+                        .requestMatchers("/", "/index.html").permitAll()
+
                         /* 🔓 STATIC */
                         .requestMatchers(
                                 "/payment.html",
