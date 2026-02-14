@@ -22,72 +22,57 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                /* 🌐 ENABLE CORS */
                 .cors(cors -> {})
-
-                /* ❌ CSRF */
                 .csrf(csrf -> csrf.disable())
-
-                /* 🚫 STATELESS JWT */
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
-                /* 🔐 AUTH RULES */
                 .authorizeHttpRequests(auth -> auth
 
-                        /* ✅ ALLOW PREFLIGHT REQUESTS */
+                        /* ✅ Allow preflight */
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        /* 🔓 HOME */
-                        .requestMatchers("/", "/index.html").permitAll()
-
-                        /* 🔓 STATIC */
+                        /* ✅ Public pages */
                         .requestMatchers(
+                                "/",
+                                "/index.html",
                                 "/payment.html",
-                                "/static/**",
+                                "/queue.html",
+                                "/login.html",
+                                "/pricing.html",
+                                "/billing.html",
+                                "/dashboard.html",
                                 "/css/**",
                                 "/js/**",
                                 "/images/**",
                                 "/favicon.ico"
                         ).permitAll()
 
-                        /* 🔓 PUBLIC */
+                        /* ✅ Public APIs */
                         .requestMatchers(
-                                "/q/**",
-                                "/queue.html",
-                                "/login.html",
-                                "/pricing.html",
-                                "/billing.html",
-                                "/dashboard.html",
                                 "/api/public/**",
+                                "/api/auth/**",
                                 "/api/token/create",
-                                "/api/auth/**"
+                                "/api/webhook/**"
                         ).permitAll()
 
-                        /* 🔐 AUTHENTICATED USER */
+                        /* 🔐 Authenticated user */
                         .requestMatchers(
                                 "/api/shop/register",
                                 "/api/context/me"
                         ).authenticated()
 
-                        /* 🔐 ADMIN ONLY */
+                        /* 🔐 Admin */
                         .requestMatchers(
                                 "/api/admin/**",
                                 "/api/queue/**"
                         ).hasAuthority("ROLE_ADMIN")
 
-                        /* 🔓 WEBHOOK */
-                        .requestMatchers("/api/webhook/**").permitAll()
-
-                        /* 🔓 ROOT */
-                        .requestMatchers("/").permitAll()
-
-                        /* ❌ BLOCK EVERYTHING ELSE */
-                        .anyRequest().denyAll()
+                        /* 🔥 Everything else requires login */
+                        .anyRequest().authenticated()
                 )
 
-                /* 🔑 JWT FILTER */
                 .addFilterBefore(
                         jwtFilter,
                         UsernamePasswordAuthenticationFilter.class
