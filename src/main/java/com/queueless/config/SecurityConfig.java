@@ -77,6 +77,9 @@ public class SecurityConfig {
                         /* 🔓 WEBHOOK */
                         .requestMatchers("/api/webhook/**").permitAll()
 
+                        /* 🔓 ROOT */
+                        .requestMatchers("/").permitAll()
+
                         /* ❌ BLOCK EVERYTHING ELSE */
                         .anyRequest().denyAll()
                 )
