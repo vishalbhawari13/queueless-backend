@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/context")
+@RequestMapping("/context")
 public class UserContextController {
 
     private final QueueService queueService;
